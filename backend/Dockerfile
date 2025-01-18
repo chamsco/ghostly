@@ -15,5 +15,11 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Set proper permissions
+RUN chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
 EXPOSE 3000
 CMD ["npm", "run", "start:prod"] 
