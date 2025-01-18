@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies and NestJS CLI globally
+RUN npm install -g @nestjs/cli && npm install
 
 # Copy the rest of the application code
 COPY . .
