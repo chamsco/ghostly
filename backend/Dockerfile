@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
@@ -23,9 +23,6 @@ RUN chown -R node:node /app
 
 # Switch to non-root user
 USER node
-
-# Set NODE_OPTIONS to include the crypto module
-ENV NODE_OPTIONS="--experimental-crypto-policy=node10"
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"] 
