@@ -15,6 +15,9 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify the build output exists
+RUN ls -la dist/ && test -f dist/main.js
+
 # Set proper permissions
 RUN chown -R node:node /app
 
@@ -22,4 +25,4 @@ RUN chown -R node:node /app
 USER node
 
 EXPOSE 3000
-CMD ["npm", "run", "start:prod"] 
+CMD ["node", "dist/main.js"] 
