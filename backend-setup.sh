@@ -4,3 +4,4 @@ npm install @nestjs/common @nestjs/core @nestjs/platform-express @nestjs/typeorm
 npm install --save-dev @types/node @types/bcrypt typescript ts-node @types/express 
 npm install express-session @types/express-session speakeasy qrcode
 npm install --save-dev @types/speakeasy @types/qrcode
+npm install --save-dev @nestjs/testing jest @types/jest ts-jest
