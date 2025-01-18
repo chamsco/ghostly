@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth.context';
 
 interface ProtectedRouteProps {
@@ -7,19 +7,14 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isLoading, isAuthenticated } = useAuth();
-  const location = useLocation();
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && !user?.isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+  if (requireAdmin && !user?.roles?.includes('admin')) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
