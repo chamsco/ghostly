@@ -1,6 +1,6 @@
 import * as session from 'express-session';
 import { createClient } from 'redis';
-import { RedisStore } from 'connect-redis';
+import RedisStore from 'connect-redis';
 
 const redisClient = createClient({
   url: process.env.REDIS_URL || 'redis://redis:6379'
@@ -9,8 +9,8 @@ const redisClient = createClient({
 redisClient.connect().catch(console.error);
 
 export const sessionConfig: session.SessionOptions = {
-  store: new RedisStore({ 
-    client: redisClient,
+  store: new RedisStore({
+    client: redisClient as any,
     prefix: 'hostking:session:'
   }),
   secret: process.env.SESSION_SECRET || 'your-secret-key',
