@@ -23,7 +23,10 @@ interface Stats {
 export function Dashboard() {
   const { data: stats } = useQuery<Stats>({
     queryKey: ['dashboard-stats'],
-    queryFn: () => api.get('/stats').then((res) => res.data),
+    queryFn: async () => {
+      const response = await api.get<Stats>('/stats');
+      return response.data;
+    },
   });
 
   return (

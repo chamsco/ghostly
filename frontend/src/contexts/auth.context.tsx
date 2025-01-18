@@ -8,9 +8,14 @@ interface User {
   roles: string[];
 }
 
+interface LoginResponse {
+  user: User;
+  token?: string;
+}
+
 interface AuthContextType {
   user: User | null;
-  login: (userData: any) => Promise<void>;
+  login: (userData: LoginResponse) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -20,8 +25,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = async (userData: any) => {
-    setUser(userData);
+  const login = async (userData: LoginResponse) => {
+    setUser(userData.user);
   };
 
   const logout = async () => {

@@ -10,6 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import type { RegisterData } from '@/types/auth';
+import { AxiosError } from 'axios';
+
+interface ApiError {
+  message: string;
+}
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -40,7 +45,7 @@ export function RegisterForm() {
       });
       navigate('/login');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiError>) => {
       toast({
         title: 'Registration failed',
         description: error.response?.data?.message || 'Something went wrong',
