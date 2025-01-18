@@ -95,7 +95,7 @@ export class AuthController {
       throw new UnauthorizedException('Invalid 2FA token');
     }
 
-    const user = await this.usersRepository.findOne({ 
+    const user = await this.userRepository.findOne({ 
       where: { id: pendingAuth.userId } 
     });
 
@@ -133,18 +133,5 @@ export class AuthController {
   async logout(@Session() session: Record<string, any>) {
     session.destroy();
     return { message: 'Logged out successfully' };
-  }
-
-  @Get('2fa/verify')
-  async verify2FA(@Body() body: { token: string }, @Req() request: any) {
-    const user = await this.userRepository.findOne({
-      where: { id: request.user.id }
-    });
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // ... rest of the verify2FA logic ...
   }
 } 
