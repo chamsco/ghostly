@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider>
         <AuthProvider>
           <Router>
             <Routes>
@@ -26,15 +26,15 @@ export default function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <Routes>
-                        <Route path="/" element={<Dashboard />} />
+                        <Route index element={<Dashboard />} />
                       </Routes>
                     </DashboardLayout>
                   </ProtectedRoute>
                 }
               />
             </Routes>
+            <Toaster />
           </Router>
-          <Toaster />
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

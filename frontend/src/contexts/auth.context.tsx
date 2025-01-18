@@ -1,67 +1,43 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/lib/axios';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface User {
   id: string;
   username: string;
   email: string;
   fullName: string;
-  isAdmin: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  checkAuth: () => Promise<void>;
+  login: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
+  isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuth = async () => {
-    try {
-      const { data } = await api.get<User>('/auth/me');
-      setUser(data);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+  const login = async (userData: any) => {
+    setUser(userData);
   };
 
   const logout = async () => {
-    await api.post('/auth/logout');
     setUser(null);
   };
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        checkAuth,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+} 
