@@ -1,99 +1,92 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/axios';
+import { useAuth } from '@/contexts/auth.context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import type { TwoFactorResponse } from '@/types/auth';
+import { api } from '@/lib/axios';
 
 const tokenSchema = z.object({
-  token: z.string().length(6, 'Token must be 6 digits'),
+  token: z.string().min(6, '2FA code must be at least 6 characters'),
 });
 
-export function TwoFactorSetup() {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [secret, setSecret] = useState<TwoFactorResponse>();
+type TokenFormData = z.infer<typeof tokenSchema>;
 
-  const { register, handleSubmit } = useForm({
+export function TwoFactorSetup() {
+  const [qrCode, setQrCode] = useState<string>('');
+  const [secret, setSecret] = useState<string>('');
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<TokenFormData>({
     resolver: zodResolver(tokenSchema),
   });
 
-  const { refetch: generateSecret } = useQuery({
-    queryKey: ['2fa-secret'],
-    queryFn: () => api.post<TwoFactorResponse>('/auth/2fa/generate'),
-    enabled: false,
-    onSuccess: (response) => {
-      setSecret(response.data);
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Failed to generate 2FA secret',
-        description: error.response?.data?.message || 'Something went wrong',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const enable2FAMutation = useMutation({
-    mutationFn: (token: string) => 
-      api.post('/auth/2fa/enable', { token }),
-    onSuccess: () => {
-      toast({
-        title: '2FA Enabled',
-        description: 'Two-factor authentication has been enabled for your account',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Failed to enable 2FA',
-        description: error.response?.data?.message || 'Invalid code',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const onSubmit = async (data: { token: string }) => {
-    setIsLoading(true);
+  const generateSecret = async () => {
     try {
-      await enable2FAMutation.mutateAsync(data.token);
-    } finally {
-      setIsLoading(false);
+      const response = await api.post('/auth/2fa/generate');
+      setQrCode(response.data.qrCode);
+      setSecret(response.data.secret);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to generate 2FA secret',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const onSubmit = async (data: TokenFormData) => {
+    try {
+      await api.post('/auth/2fa/enable', data);
+      toast({
+        title: 'Success',
+        description: '2FA has been enabled for your account',
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Invalid 2FA code',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
     <div className="space-y-6">
-      {!secret ? (
-        <Button onClick={() => generateSecret()} disabled={isLoading}>
-          Setup Two-Factor Authentication
-        </Button>
-      ) : (
-        <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Two-Factor Authentication Setup</h2>
+        <p className="text-sm text-muted-foreground">
+          Enhance your account security by enabling two-factor authentication.
+        </p>
+      </div>
+
+      {!qrCode && (
+        <Button onClick={generateSecret}>Generate 2FA Secret</Button>
+      )}
+
+      {qrCode && (
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label>Scan QR Code</Label>
-            <div className="flex justify-center">
-              <img src={secret.qrCode} alt="2FA QR Code" />
-            </div>
-            <p className="text-sm text-gray-500">
-              Scan this QR code with your authenticator app
-            </p>
+            <div
+              className="qr-code"
+              dangerouslySetInnerHTML={{ __html: qrCode }}
+            />
           </div>
 
           <div className="space-y-2">
             <Label>Manual Entry Code</Label>
-            <Input
-              value={secret.secret}
-              readOnly
-              onClick={(e) => e.currentTarget.select()}
-            />
-            <p className="text-sm text-gray-500">
-              If you can't scan the QR code, enter this code manually
-            </p>
+            <p className="text-sm font-mono bg-muted p-2 rounded">{secret}</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -102,13 +95,16 @@ export function TwoFactorSetup() {
               <Input
                 id="token"
                 {...register('token')}
-                placeholder="Enter 6-digit code"
-                disabled={isLoading}
+                type="text"
+                placeholder="Enter the 6-digit code"
               />
+              {errors.token && (
+                <p className="text-sm text-red-500">{errors.token.message}</p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Enabling 2FA...' : 'Enable 2FA'}
+            <Button type="submit" disabled={isSubmitting}>
+              Enable 2FA
             </Button>
           </form>
         </div>

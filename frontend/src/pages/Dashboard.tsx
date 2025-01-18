@@ -8,128 +8,88 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import {
-  Activity,
-  Server,
-  Globe,
-  Database,
-  Clock,
-} from 'lucide-react';
 
-interface SystemStats {
-  projectCount: number;
-  activeServices: number;
-  domains: number;
-  cpuUsage: number;
-  memoryUsage: number;
-  diskUsage: number;
+interface Stats {
+  totalProjects: number;
+  activeDeployments: number;
   uptime: number;
+  resourceUsage: {
+    cpu: number;
+    memory: number;
+    storage: number;
+  };
 }
 
 export function Dashboard() {
-  const { data: stats, isLoading } = useQuery<SystemStats>({
-    queryKey: ['system-stats'],
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['dashboard-stats'],
     queryFn: () => api.get('/stats').then((res) => res.data),
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          System overview and statistics
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
+      
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Projects</CardTitle>
-            <Server className="h-4 w-4 text-gray-500" />
+          <CardHeader>
+            <CardTitle>Total Projects</CardTitle>
+            <CardDescription>Active and archived projects</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.projectCount}</div>
-            <p className="text-xs text-gray-500">Active projects</p>
+            <p className="text-2xl font-bold">{stats?.totalProjects || 0}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Services</CardTitle>
-            <Database className="h-4 w-4 text-gray-500" />
+          <CardHeader>
+            <CardTitle>Active Deployments</CardTitle>
+            <CardDescription>Currently running services</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeServices}</div>
-            <p className="text-xs text-gray-500">Running services</p>
+            <p className="text-2xl font-bold">{stats?.activeDeployments || 0}</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Domains</CardTitle>
-            <Globe className="h-4 w-4 text-gray-500" />
+          <CardHeader>
+            <CardTitle>System Uptime</CardTitle>
+            <CardDescription>Last 30 days</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.domains}</div>
-            <p className="text-xs text-gray-500">Active domains</p>
+            <p className="text-2xl font-bold">{stats?.uptime || 0}%</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <Clock className="h-4 w-4 text-gray-500" />
+          <CardHeader>
+            <CardTitle>Resource Usage</CardTitle>
+            <CardDescription>Current system resources</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.floor(stats?.uptime / 86400)}d
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>CPU</span>
+                <span>{stats?.resourceUsage.cpu || 0}%</span>
+              </div>
+              <Progress value={stats?.resourceUsage.cpu || 0} />
             </div>
-            <p className="text-xs text-gray-500">System uptime</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>CPU Usage</CardTitle>
-            <CardDescription>System processor utilization</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={stats?.cpuUsage} className="h-2" />
-            <p className="mt-2 text-sm text-gray-500">
-              {stats?.cpuUsage.toFixed(1)}% used
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Memory Usage</CardTitle>
-            <CardDescription>System memory utilization</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={stats?.memoryUsage} className="h-2" />
-            <p className="mt-2 text-sm text-gray-500">
-              {stats?.memoryUsage.toFixed(1)}% used
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Disk Usage</CardTitle>
-            <CardDescription>Storage utilization</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={stats?.diskUsage} className="h-2" />
-            <p className="mt-2 text-sm text-gray-500">
-              {stats?.diskUsage.toFixed(1)}% used
-            </p>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Memory</span>
+                <span>{stats?.resourceUsage.memory || 0}%</span>
+              </div>
+              <Progress value={stats?.resourceUsage.memory || 0} />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Storage</span>
+                <span>{stats?.resourceUsage.storage || 0}%</span>
+              </div>
+              <Progress value={stats?.resourceUsage.storage || 0} />
+            </div>
           </CardContent>
         </Card>
       </div>

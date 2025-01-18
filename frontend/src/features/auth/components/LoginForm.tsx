@@ -1,150 +1,131 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/auth.context';
 import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import type { LoginData, AuthResponse } from '@/types/auth';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
 });
 
-const twoFactorSchema = z.object({
-  token: z.string().length(6, 'Token must be 6 digits'),
-});
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [requires2FA, setRequires2FA] = useState(false);
+  const [isVerifying2FA, setIsVerifying2FA] = useState(false);
 
-  const { register: registerLogin, handleSubmit: handleLoginSubmit } = useForm<LoginData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
-  const { register: register2FA, handleSubmit: handle2FASubmit } = useForm({
-    resolver: zodResolver(twoFactorSchema),
-  });
-
-  const loginMutation = useMutation({
-    mutationFn: (data: LoginData) => 
-      api.post<AuthResponse>('/auth/login', data),
-    onSuccess: (response) => {
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      const response = await api.post('/auth/login', data);
+      
       if (response.data.requiresTwoFactor) {
-        setRequires2FA(true);
+        setIsVerifying2FA(true);
         toast({
           title: '2FA Required',
-          description: 'Please enter your 2FA code',
+          description: 'Please enter your 2FA code to continue.',
         });
       } else {
-        toast({
-          title: 'Login successful',
-          description: 'Welcome back!',
-        });
-        if (!localStorage.getItem('onboarding_completed')) {
-          navigate('/onboarding');
-        } else {
-          navigate('/dashboard');
-        }
+        await login(response.data);
+        navigate('/');
       }
-    },
-    onError: (error: any) => {
+    } catch (error) {
       toast({
-        title: 'Login failed',
-        description: error.response?.data?.message || 'Invalid credentials',
+        title: 'Error',
+        description: 'Invalid username or password',
         variant: 'destructive',
       });
-    },
-  });
-
-  const verify2FAMutation = useMutation({
-    mutationFn: (token: string) => 
-      api.post<AuthResponse>('/auth/2fa/verify', { token }),
-    onSuccess: () => {
-      toast({
-        title: 'Login successful',
-        description: 'Welcome back!',
-      });
-      navigate('/dashboard');
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Verification failed',
-        description: error.response?.data?.message || 'Invalid code',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const onLoginSubmit = async (data: LoginData) => {
-    setIsLoading(true);
-    try {
-      await loginMutation.mutateAsync(data);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const on2FASubmit = async (data: { token: string }) => {
-    setIsLoading(true);
+  const verify2FA = async (data: { token: string }) => {
     try {
-      await verify2FAMutation.mutateAsync(data.token);
-    } finally {
-      setIsLoading(false);
+      const response = await api.post('/auth/2fa/verify', data);
+      await login(response.data);
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Invalid 2FA code',
+        variant: 'destructive',
+      });
     }
   };
 
-  if (requires2FA) {
+  if (isVerifying2FA) {
+    const {
+      register: register2FA,
+      handleSubmit: handleSubmit2FA,
+      formState: { errors: errors2FA, isSubmitting: isSubmitting2FA },
+    } = useForm<{ token: string }>({
+      resolver: zodResolver(z.object({ token: z.string().min(6, '2FA code is required') })),
+    });
+
     return (
-      <form onSubmit={handle2FASubmit(on2FASubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit2FA(verify2FA)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="token">2FA Code</Label>
           <Input
             id="token"
             {...register2FA('token')}
-            placeholder="Enter 6-digit code"
-            disabled={isLoading}
+            type="text"
+            placeholder="Enter your 2FA code"
           />
+          {errors2FA.token && (
+            <p className="text-sm text-red-500">{errors2FA.token.message}</p>
+          )}
         </div>
-
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? 'Verifying...' : 'Verify'}
+        <Button type="submit" disabled={isSubmitting2FA}>
+          Verify
         </Button>
       </form>
     );
   }
 
   return (
-    <form onSubmit={handleLoginSubmit(onLoginSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
         <Input
           id="username"
-          {...registerLogin('username')}
-          disabled={isLoading}
+          {...register('username')}
+          type="text"
+          placeholder="Enter your username"
         />
+        {errors.username && (
+          <p className="text-sm text-red-500">{errors.username.message}</p>
+        )}
       </div>
-
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
+          {...register('password')}
           type="password"
-          {...registerLogin('password')}
-          disabled={isLoading}
+          placeholder="Enter your password"
         />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
       </div>
-
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
+      <Button type="submit" disabled={isSubmitting}>
+        Login
       </Button>
     </form>
   );
