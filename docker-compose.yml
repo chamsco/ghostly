@@ -7,10 +7,24 @@ services:
       POSTGRES_DB: hostking
       POSTGRES_USER: hostkinguser
       POSTGRES_PASSWORD: hostkingpass
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hostkinguser -d hostking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   # Backend API
   backend:
@@ -18,18 +32,22 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USERNAME=hostkinguser
       - DB_PASSWORD=hostkingpass
       - DB_DATABASE=hostking
-      - JWT_SECRET=your_jwt_secret
-      - SESSION_SECRET=your_session_secret
+      - JWT_SECRET=your_jwt_secret_key_here
+      - SESSION_SECRET=your_session_secret_key_here
+      - REDIS_URL=redis://redis:6379
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   # Frontend
   frontend:
@@ -42,4 +60,5 @@ services:
       - backend
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  redis_data: 
