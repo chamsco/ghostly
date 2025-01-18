@@ -6,14 +6,25 @@ import {
   UnauthorizedException,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  Req,
+  Res,
+  Get
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>
+  ) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -122,5 +133,18 @@ export class AuthController {
   async logout(@Session() session: Record<string, any>) {
     session.destroy();
     return { message: 'Logged out successfully' };
+  }
+
+  @Get('2fa/verify')
+  async verify2FA(@Body() body: { token: string }, @Req() request: any) {
+    const user = await this.userRepository.findOne({
+      where: { id: request.user.id }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // ... rest of the verify2FA logic ...
   }
 } 
