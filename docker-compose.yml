@@ -4,15 +4,20 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: hostkinguser
-      POSTGRES_PASSWORD: hostkingpass
-      POSTGRES_DB: hostking
+      POSTGRES_DB: ghostly
+      POSTGRES_USER: ghostlyuser
+      POSTGRES_PASSWORD: ghostlypass
     volumes:
       - type: volume
         source: postgres_data
         target: /var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghostlyuser -d ghostly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Redis
   redis:
@@ -23,6 +28,11 @@ services:
       - type: volume
         source: redis_data
         target: /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Backend API
   backend:
@@ -30,16 +40,26 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=postgresql://hostkinguser:hostkingpass@postgres:5432/hostking
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=ghostlyuser
+      - DB_PASSWORD=ghostlypass
+      - DB_DATABASE=ghostly
+      - JWT_SECRET=your_jwt_secret_key_here
+      - SESSION_SECRET=your_session_secret_key_here
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-secret-key
-      - SESSION_SECRET=your-session-secret
+    volumes:
+      - type: bind
+        source: ./backend/logs
+        target: /app/logs
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # Frontend
   frontend:
