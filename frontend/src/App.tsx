@@ -3,8 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/auth.context';
 import { ThemeProvider } from '@/contexts/theme.context';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Dashboard } from '@/pages/Dashboard';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
@@ -14,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
 
-export default function App() {
+function AppRoutes() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -33,30 +31,36 @@ export default function App() {
   }, [userCheck, isAuthenticated, navigate]);
 
   return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          !isAuthenticated ? <Login /> : <Navigate to="/" replace />
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          !isAuthenticated ? <Register /> : <Navigate to="/" replace />
+        }
+      />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
           <Router>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  !isAuthenticated ? <Login /> : <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/register"
-                element={
-                  !isAuthenticated ? <Register /> : <Navigate to="/" replace />
-                }
-              />
-            </Routes>
+            <AppRoutes />
             <Toaster />
           </Router>
         </AuthProvider>
