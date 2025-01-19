@@ -4,8 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './users/users.module';
+import { ProjectsModule } from './projects/projects.module';
 import { User } from './users/entities/user.entity';
 import { Device } from './auth/entities/device.entity';
+import { Project } from './projects/entities/project.entity';
 import { SecurityMiddleware } from './middleware/security.middleware';
 
 @Module({
@@ -22,7 +24,7 @@ import { SecurityMiddleware } from './middleware/security.middleware';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
-        entities: [User, Device],
+        entities: [User, Device, Project],
         synchronize: configService.get('NODE_ENV') !== 'production',
       }),
       inject: [ConfigService],
@@ -39,6 +41,7 @@ import { SecurityMiddleware } from './middleware/security.middleware';
     }),
     AuthModule,
     UsersModule,
+    ProjectsModule,
   ],
 })
 export class AppModule implements NestModule {

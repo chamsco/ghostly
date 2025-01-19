@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Users, Server } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 interface Stats {
   totalProjects: number;
@@ -24,16 +25,19 @@ export function Dashboard() {
       storage: 0
     }
   });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch dashboard stats
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/dashboard/stats');
-        const data = await response.json();
-        setStats(data);
+        const response = await api.get('/dashboard/stats');
+        setStats(response.data);
+        setError(null);
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
+        setError('Failed to load dashboard statistics');
+        // Keep the default stats state
       }
     };
 
@@ -47,6 +51,12 @@ export function Dashboard() {
           Welcome back, {user?.fullName}
         </h2>
       </div>
+
+      {error && (
+        <div className="bg-destructive/15 text-destructive px-4 py-2 rounded-md">
+          {error}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -85,19 +95,19 @@ export function Dashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">CPU</span>
                 <span className="text-sm font-medium">
-                  {stats.resourceUsage.cpu}%
+                  {stats.resourceUsage?.cpu ?? 0}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Memory</span>
                 <span className="text-sm font-medium">
-                  {stats.resourceUsage.memory}%
+                  {stats.resourceUsage?.memory ?? 0}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Storage</span>
                 <span className="text-sm font-medium">
-                  {stats.resourceUsage.storage}%
+                  {stats.resourceUsage?.storage ?? 0}%
                 </span>
               </div>
             </div>
