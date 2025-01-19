@@ -2,11 +2,11 @@ version: '3.8'
 services:
   # Database
   postgres:
-    image: postgres:14-alpine
+    image: postgres:15-alpine
     environment:
-      POSTGRES_DB: hostking
-      POSTGRES_USER: hostkinguser
-      POSTGRES_PASSWORD: hostkingpass
+      POSTGRES_DB: ghostly
+      POSTGRES_USER: ghostlyuser
+      POSTGRES_PASSWORD: ghostlypass
     volumes:
       - type: volume
         source: postgres_data
@@ -30,12 +30,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USERNAME=hostkinguser
-      - DB_PASSWORD=hostkingpass
-      - DB_DATABASE=hostking
+      - DB_USERNAME=ghostlyuser
+      - DB_PASSWORD=ghostlypass
+      - DB_DATABASE=ghostly
       - JWT_SECRET=your_jwt_secret_key_here
       - SESSION_SECRET=your_session_secret_key_here
       - REDIS_URL=redis://redis:6379

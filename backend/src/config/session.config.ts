@@ -14,7 +14,7 @@ const RedisStore = connectRedis(session);
 export const sessionConfig: session.SessionOptions = {
   store: new RedisStore({
     client: redisClient,
-    prefix: 'hostking:session:'
+    prefix: 'ghostly:session:',
   }),
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,

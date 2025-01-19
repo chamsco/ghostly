@@ -61,7 +61,7 @@ export class AuthService {
 
   async generate2FASecret(userId: string) {
     const secret = speakeasy.generateSecret({
-      name: `Hostking:${process.env.APP_NAME || 'Development'}`
+      name: `Ghostly:${process.env.APP_NAME || 'Development'}`
     });
 
     const user = await this.usersRepository.findOne({ 
@@ -75,7 +75,14 @@ export class AuthService {
     user.twoFactorSecret = secret.base32;
     await this.usersRepository.save(user);
 
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+    const otpAuthUrl = speakeasy.otpauthURL({
+      secret: secret.base32,
+      label: user.email,
+      issuer: `Ghostly:${process.env.APP_NAME || 'Development'}`,
+      encoding: 'base32'
+    });
+
+    const qrCodeUrl = await QRCode.toDataURL(otpAuthUrl);
     
     return {
       secret: secret.base32,
