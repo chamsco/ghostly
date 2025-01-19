@@ -173,30 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const timeUntilRefresh = Math.max(0, session.expiresAt - Date.now() - TOKEN_REFRESH_THRESHOLD * 1000);
-    refreshTimeoutRef.current = setTimeout(async () => {
-      try {
-        const response = await api.post('/auth/refresh', {
-          refreshToken: session.refreshToken,
-          deviceId: session.deviceId
-        });
-        
-        const { access_token, refreshToken } = response.data;
-        const newSession = {
-          ...session,
-          token: access_token,
-          refreshToken,
-          expiresAt: Date.now() + SESSION_DURATION
-        };
-        
-        setSession(newSession);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
-        scheduleTokenRefresh(newSession);
-      } catch (error) {
-        // If refresh fails, log out
-        await logout();
-      }
-    }, timeUntilRefresh);
-  }, []);
+    refreshTimeoutRef.current = setTimeout(refreshToken, timeUntilRefresh);
+  }, [refreshToken]);
 
   // Function to fetch active devices
   const fetchDevices = useCallback(async () => {
