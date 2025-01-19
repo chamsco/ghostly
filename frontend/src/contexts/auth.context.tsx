@@ -203,44 +203,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        setIsLoading(true);
         const storedSession = localStorage.getItem(STORAGE_KEY);
-        if (storedSession) {
-          const session = JSON.parse(storedSession) as Session;
-          const currentTime = Date.now();
-
-          // Check if session is expired
-          if (session.expiresAt < currentTime) {
-            localStorage.removeItem(STORAGE_KEY);
-            setIsLoading(false);
-            return;
-          }
-
-          // Set up session
-          setSession(session);
-          setUser(session.user);
-          api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
-
-          // Schedule token refresh if needed
-          if (isTokenExpired(session.token)) {
-            await refreshToken();
-          } else {
-            scheduleTokenRefresh(session.expiresAt);
-          }
-
-          // Fetch active devices
-          await fetchDevices();
+        if (!storedSession) {
+          setIsLoading(false);
+          return;
         }
+
+        const session = JSON.parse(storedSession) as Session;
+        if (session.expiresAt < Date.now()) {
+          localStorage.removeItem(STORAGE_KEY);
+          setIsLoading(false);
+          return;
+        }
+
+        setSession(session);
+        setUser(session.user);
+        api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
+        await fetchDevices();
       } catch (error) {
         console.error('Failed to restore session:', error);
         localStorage.removeItem(STORAGE_KEY);
       } finally {
         setIsLoading(false);
-        setLoading(false);
       }
     };
 
     restoreSession();
-  }, [isTokenExpired, refreshToken, scheduleTokenRefresh, fetchDevices]);
+  }, []);
 
   // Clean up refresh timer
   useEffect(() => {

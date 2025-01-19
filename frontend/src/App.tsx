@@ -18,30 +18,26 @@ function LoadingScreen() {
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [router, setRouter] = useState(null);
+  const [router, setRouter] = useState<ReturnType<typeof createBrowserRouter> | null>(null);
 
   useEffect(() => {
     if (!isLoading) {
       const newRouter = createBrowserRouter([
         {
           path: '/',
-          element: <Navigate to="/dashboard" replace />,
+          element: <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />,
         },
         {
           path: '/login',
-          element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />,
+          element: <Login />,
         },
         {
           path: '/register',
-          element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />,
+          element: <Register />,
         },
         {
           path: '/dashboard',
-          element: !isAuthenticated ? <Navigate to="/login" replace /> : (
-            <DashboardLayout>
-              <Dashboard />
-            </DashboardLayout>
-          ),
+          element: <DashboardLayout><Dashboard /></DashboardLayout>,
         }
       ]);
       setRouter(newRouter);
