@@ -96,18 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkBiometrics = async () => {
       try {
-        if ('credentials' in navigator && 'PublicKeyCredential' in window) {
-          // Check if platform authenticator is available
+        if (typeof window !== 'undefined' && 
+            'credentials' in navigator && 
+            'PublicKeyCredential' in window &&
+            typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
           const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
           setIsBiometricsAvailable(available);
-          
-          // Check if biometrics was previously enabled
           const biometricsEnabled = localStorage.getItem(BIOMETRICS_KEY);
           setIsBiometricsEnabled(!!biometricsEnabled);
+        } else {
+          setIsBiometricsAvailable(false);
+          setIsBiometricsEnabled(false);
         }
       } catch (error) {
-        console.error('Biometrics not supported:', error);
+        console.error('Biometrics check failed:', error);
         setIsBiometricsAvailable(false);
+        setIsBiometricsEnabled(false);
       }
     };
     checkBiometrics();
