@@ -201,39 +201,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Restore session on mount
   useEffect(() => {
-    const storedSession = localStorage.getItem(STORAGE_KEY);
-    if (storedSession) {
+    const restoreSession = async () => {
       try {
-        const session = JSON.parse(storedSession) as Session;
-        const currentTime = Date.now();
+        const storedSession = localStorage.getItem(STORAGE_KEY);
+        if (storedSession) {
+          const session = JSON.parse(storedSession) as Session;
+          const currentTime = Date.now();
 
-        // Check if session is expired
-        if (session.expiresAt < currentTime) {
-          localStorage.removeItem(STORAGE_KEY);
-          setIsLoading(false);
-          return;
+          // Check if session is expired
+          if (session.expiresAt < currentTime) {
+            localStorage.removeItem(STORAGE_KEY);
+            setIsLoading(false);
+            return;
+          }
+
+          // Set up session
+          setSession(session);
+          setUser(session.user);
+          api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
+
+          // Schedule token refresh if needed
+          if (isTokenExpired(session.token)) {
+            await refreshToken();
+          } else {
+            scheduleTokenRefresh(session.expiresAt);
+          }
+
+          // Fetch active devices
+          await fetchDevices();
         }
-
-        // Set up session
-        setSession(session);
-        setUser(session.user);
-        api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
-
-        // Schedule token refresh if needed
-        if (isTokenExpired(session.token)) {
-          refreshToken();
-        } else {
-          scheduleTokenRefresh(session.expiresAt);
-        }
-
-        // Fetch active devices
-        fetchDevices();
       } catch (error) {
         console.error('Failed to restore session:', error);
         localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
+        setLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    restoreSession();
   }, [isTokenExpired, refreshToken, scheduleTokenRefresh, fetchDevices]);
 
   // Clean up refresh timer
@@ -716,7 +722,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateAuthSettings
       }}
     >
-      {children}
+      {!isLoading ? children : <div>Loading...</div>}
     </AuthContext.Provider>
   );
 }
