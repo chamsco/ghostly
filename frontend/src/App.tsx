@@ -1,46 +1,38 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth.context';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/auth.context';
+import { ThemeProvider } from '@/contexts/theme.context';
+import { Toaster } from '@/components/ui/toaster';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Dashboard } from '@/pages/Dashboard';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
-import Dashboard from '@/pages/Dashboard';
-import { RefreshCcw } from 'lucide-react';
 
-function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin">
-          <RefreshCcw className="w-8 h-8 text-purple-500" />
-        </div>
-      </div>
-    );
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <DashboardLayout><Dashboard /></DashboardLayout>,
+  },
+  {
+    path: '/login',
+    element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
+  },
+  {
+    path: '/dashboard',
+    element: <DashboardLayout><Dashboard /></DashboardLayout>,
   }
+]);
 
-  // If there's no user, redirect to register
-  if (!isAuthenticated) {
-    return (
-      <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
-
+export function App() {
   return (
-    <Routes>
-      <Route element={<DashboardLayout><Outlet /></DashboardLayout>}>
-        <Route index element={<Dashboard />} />
-        {/* Add more protected routes here */}
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster />
+      </AuthProvider>
+    </ThemeProvider>
   );
-}
-
-export default function App() {
-  return <AppRoutes />;
 } 

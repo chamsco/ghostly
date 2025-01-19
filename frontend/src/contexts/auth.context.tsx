@@ -523,11 +523,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: RegisterData) => {
     try {
-      const response = await api.post('/auth/register', data);
-      const { user: newUser } = response.data;
-
-      // Automatically log in after registration
-      await login(data.username, data.password, false);
+      await api.post('/auth/register', data);
 
       toast({
         title: 'Success',
@@ -629,10 +625,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const registerBiometrics = async () => {
     try {
-      const response = await api.post('/auth/biometrics/register');
-      const options = response.data;
-      // Here you would typically call the WebAuthn API with these options
-      // For demo purposes, we'll just show a success message
+      await api.post('/auth/biometrics/register');
       await checkAuth();
       toast({
         title: 'Success',
