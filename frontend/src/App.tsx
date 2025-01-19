@@ -9,64 +9,50 @@ import { Register } from '@/pages/Register';
 
 function LoadingScreen() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-lg">Loading...</div>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="text-lg animate-pulse">Loading...</div>
     </div>
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
+  const router = createBrowserRouter([
+    {
+      path: '/',
+      element: <Navigate to="/dashboard" replace />,
+    },
+    {
+      path: '/login',
+      element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />,
+    },
+    {
+      path: '/register',
+      element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />,
+    },
+    {
+      path: '/dashboard',
+      element: !isAuthenticated ? <Navigate to="/login" replace /> : (
+        <DashboardLayout>
+          <Dashboard />
+        </DashboardLayout>
+      ),
+    }
+  ]);
 
-  return <>{children}</>;
+  return <RouterProvider router={router} fallbackElement={<LoadingScreen />} />;
 }
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
-  }
-
-  return <>{children}</>;
-}
-
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <Navigate to="/dashboard" replace />,
-  },
-  {
-    path: '/login',
-    element: <PublicRoute><Login /></PublicRoute>,
-  },
-  {
-    path: '/register',
-    element: <PublicRoute><Register /></PublicRoute>,
-  },
-  {
-    path: '/dashboard',
-    element: <ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>,
-  }
-]);
 
 export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RouterProvider router={router} fallbackElement={<LoadingScreen />} />
+        <AppRoutes />
         <Toaster />
       </AuthProvider>
     </ThemeProvider>

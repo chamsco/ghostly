@@ -1,10 +1,12 @@
 import * as session from 'express-session';
 import * as connectRedis from 'connect-redis';
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 
-export const redisClient: RedisClientType = createClient({
-  url: process.env.REDIS_URL || 'redis://redis:6379'
-});
+// Create Redis client with proper type
+export const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://redis:6379',
+  legacyMode: false
+}) as any; // Type assertion to avoid connect() method error
 
 // Initialize Redis client
 (async () => {
@@ -31,4 +33,4 @@ export const sessionConfig: session.SessionOptions = {
     maxAge: 1000 * 60 * 60 * 24, // 24 hours
     sameSite: 'lax'
   }
-}; 
+};
