@@ -2,11 +2,13 @@ import * as session from 'express-session';
 import * as connectRedis from 'connect-redis';
 import { createClient } from 'redis';
 
-// Create Redis client with proper type
 export const redisClient = createClient({
   url: process.env.REDIS_URL || 'redis://redis:6379',
-  legacyMode: false
-}) as any; // Type assertion to avoid connect() method error
+  socket: {
+    host: 'redis',
+    port: 6379
+  }
+});
 
 // Initialize Redis client
 (async () => {

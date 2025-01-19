@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Dashboard } from '@/pages/Dashboard';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
+import { useState, useEffect } from 'react';
 
 function LoadingScreen() {
   return (
@@ -17,35 +18,41 @@ function LoadingScreen() {
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [router, setRouter] = useState(null);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading) {
+      const newRouter = createBrowserRouter([
+        {
+          path: '/',
+          element: <Navigate to="/dashboard" replace />,
+        },
+        {
+          path: '/login',
+          element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />,
+        },
+        {
+          path: '/register',
+          element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />,
+        },
+        {
+          path: '/dashboard',
+          element: !isAuthenticated ? <Navigate to="/login" replace /> : (
+            <DashboardLayout>
+              <Dashboard />
+            </DashboardLayout>
+          ),
+        }
+      ]);
+      setRouter(newRouter);
+    }
+  }, [isAuthenticated, isLoading]);
+
+  if (isLoading || !router) {
     return <LoadingScreen />;
   }
 
-  const router = createBrowserRouter([
-    {
-      path: '/',
-      element: <Navigate to="/dashboard" replace />,
-    },
-    {
-      path: '/login',
-      element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />,
-    },
-    {
-      path: '/register',
-      element: isAuthenticated ? <Navigate to="/dashboard" replace /> : <Register />,
-    },
-    {
-      path: '/dashboard',
-      element: !isAuthenticated ? <Navigate to="/login" replace /> : (
-        <DashboardLayout>
-          <Dashboard />
-        </DashboardLayout>
-      ),
-    }
-  ]);
-
-  return <RouterProvider router={router} fallbackElement={<LoadingScreen />} />;
+  return <RouterProvider router={router} />;
 }
 
 export function App() {
