@@ -1,70 +1,46 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider, useAuth } from '@/contexts/auth.context';
-import { ThemeProvider } from '@/contexts/theme.context';
-import { Dashboard } from '@/pages/Dashboard';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '@/contexts/auth.context';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
-import { useEffect } from 'react';
-import { api } from '@/lib/axios';
-import { useQuery } from '@tanstack/react-query';
-
-const queryClient = new QueryClient();
+import Dashboard from '@/pages/Dashboard';
+import { RefreshCcw } from 'lucide-react';
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  const { data: userCheck } = useQuery({
-    queryKey: ['checkUsers'],
-    queryFn: async () => {
-      const response = await api.get('/auth/check-users');
-      return response.data;
-    },
-  });
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin">
+          <RefreshCcw className="w-8 h-8 text-purple-500" />
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    if (userCheck && !userCheck.hasUsers && !isAuthenticated) {
-      navigate('/register');
-    }
-  }, [userCheck, isAuthenticated, navigate]);
+  // If there's no user, redirect to register
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          !isAuthenticated ? <Login /> : <Navigate to="/" replace />
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          !isAuthenticated ? <Register /> : <Navigate to="/" replace />
-        }
-      />
+      <Route element={<DashboardLayout><Outlet /></DashboardLayout>}>
+        <Route index element={<Dashboard />} />
+        {/* Add more protected routes here */}
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <Router>
-            <AppRoutes />
-            <Toaster />
-          </Router>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
+  return <AppRoutes />;
 } 

@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Device } from '../../auth/entities/device.entity';
 
 @Entity('users')
 export class User {
@@ -31,6 +32,19 @@ export class User {
 
   @Column({ default: false })
   twoFactorEnabled: boolean;
+
+  @Column({ default: false })
+  isBiometricsEnabled: boolean;
+
+  @Column({ type: 'json', nullable: true })
+  biometricCredentials: {
+    credentialId: string;
+    publicKey: string;
+    counter: number;
+  }[];
+
+  @OneToMany(() => Device, device => device.user)
+  devices: Device[];
 
   @CreateDateColumn()
   createdAt: Date;

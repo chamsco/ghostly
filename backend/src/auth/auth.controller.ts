@@ -2,13 +2,11 @@ import {
   Controller, 
   Post, 
   Body, 
-  Session, 
   UnauthorizedException,
   HttpCode,
   HttpStatus,
   UseGuards,
   Req,
-  Res,
   Get
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -17,6 +15,15 @@ import { LoginDto } from './dto/login.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Request } from 'express';
+
+interface RequestWithUser extends Request {
+  user: {
+    id: string;
+    deviceId: string;
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -39,100 +46,158 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
-    @Session() session: Record<string, any>
+    @Req() req: Request
   ) {
     const user = await this.authService.validateUser(
       loginDto.username,
       loginDto.password
     );
 
-    if (user.twoFactorEnabled) {
-      session.pendingSecondFactor = {
-        userId: user.id,
-        timestamp: Date.now()
-      };
-      return { 
-        message: '2FA required',
-        requiresTwoFactor: true 
-      };
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    session.userId = user.id;
-    session.isAdmin = user.isAdmin;
-
-    return { 
-      message: 'Login successful',
-      requiresTwoFactor: false
-    };
-  }
-
-  @Post('2fa/generate')
-  async generate2FA(@Session() session: Record<string, any>) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Not authenticated');
-    }
-
-    return this.authService.generate2FASecret(session.userId);
-  }
-
-  @Post('2fa/verify')
-  async verify2FA(
-    @Body('token') token: string,
-    @Session() session: Record<string, any>
-  ) {
-    const pendingAuth = session.pendingSecondFactor;
-    
-    if (!pendingAuth || Date.now() - pendingAuth.timestamp > 300000) { // 5 minutes
-      throw new UnauthorizedException('Invalid or expired 2FA session');
-    }
-
-    const isValid = await this.authService.verify2FAToken(
-      pendingAuth.userId,
-      token
+    return this.authService.login(
+      user,
+      loginDto.deviceName,
+      req.headers['user-agent'] || 'unknown',
+      req.ip,
+      loginDto.rememberMe
     );
-
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid 2FA token');
-    }
-
-    const user = await this.userRepository.findOne({ 
-      where: { id: pendingAuth.userId } 
-    });
-
-    session.userId = user.id;
-    session.isAdmin = user.isAdmin;
-    delete session.pendingSecondFactor;
-
-    return { message: '2FA verification successful' };
   }
 
-  @Post('2fa/enable')
-  async enable2FA(
-    @Body('token') token: string,
-    @Session() session: Record<string, any>
+  @Post('refresh')
+  async refresh(
+    @Body('refreshToken') refreshToken: string,
+    @Body('deviceId') deviceId: string
   ) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Not authenticated');
-    }
-
-    const isValid = await this.authService.verify2FAToken(
-      session.userId,
-      token
-    );
-
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid 2FA token');
-    }
-
-    await this.authService.enable2FA(session.userId);
-    return { message: '2FA enabled successfully' };
+    return this.authService.refreshToken(refreshToken, deviceId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
-  async logout(@Session() session: Record<string, any>) {
-    session.destroy();
+  async logout(
+    @Body('refreshToken') refreshToken: string,
+    @Body('deviceId') deviceId: string
+  ) {
+    await this.authService.logout(refreshToken, deviceId);
     return { message: 'Logged out successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout/all')
+  async logoutAll(@Req() req: RequestWithUser) {
+    await this.authService.logoutAllDevices(req.user.id);
+    return { message: 'Logged out from all devices' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('devices')
+  async getDevices(@Req() req: RequestWithUser) {
+    const devices = await this.authService.getDevices(req.user.id);
+    return devices.map(device => ({
+      ...device,
+      current: device.id === req.user.deviceId
+    }));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometrics/register')
+  async registerBiometrics(@Req() req: RequestWithUser) {
+    const user = await this.userRepository.findOne({
+      where: { id: req.user.id }
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.authService.generateBiometricRegistrationOptions(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometrics/register/complete')
+  async completeBiometricRegistration(
+    @Req() req: RequestWithUser,
+    @Body() body: {
+      id: string;
+      response: {
+        attestationObject: string;
+        clientDataJSON: string;
+      };
+    }
+  ) {
+    const user = await this.userRepository.findOne({
+      where: { id: req.user.id }
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    await this.authService.verifyBiometricRegistration(
+      user,
+      body.id,
+      body.response.attestationObject,
+      body.response.clientDataJSON
+    );
+    return { message: 'Biometric registration successful' };
+  }
+
+  @Post('biometrics/challenge')
+  async getBiometricChallenge(@Body('username') username: string) {
+    const user = await this.authService.findByUsername(username);
+    if (!user || !user.isBiometricsEnabled) {
+      throw new UnauthorizedException('Biometric authentication not available');
+    }
+    return this.authService.generateBiometricAuthenticationOptions(user);
+  }
+
+  @Post('biometrics/login')
+  async loginWithBiometrics(
+    @Body() body: {
+      id: string;
+      response: {
+        authenticatorData: string;
+        clientDataJSON: string;
+        signature: string;
+      };
+    },
+    @Req() req: Request
+  ) {
+    const user = await this.authService.findByCredentialId(body.id);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credential');
+    }
+
+    const isValid = await this.authService.verifyBiometricAssertion(
+      user,
+      body.id,
+      body.response.authenticatorData,
+      body.response.clientDataJSON,
+      body.response.signature
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid assertion');
+    }
+
+    return this.authService.login(
+      user,
+      'Biometric Login',
+      req.headers['user-agent'] || 'unknown',
+      req.ip,
+      true
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('biometrics/disable')
+  async disableBiometrics(@Req() req: RequestWithUser) {
+    const user = await this.userRepository.findOne({
+      where: { id: req.user.id }
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    await this.authService.disableBiometrics(user);
+    return { message: 'Biometrics disabled successfully' };
   }
 
   @Get('check-users')
@@ -141,14 +206,11 @@ export class AuthController {
     return { hasUsers: count > 0 };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getCurrentUser(@Session() session: Record<string, any>) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Not authenticated');
-    }
-
+  async getCurrentUser(@Req() req: RequestWithUser) {
     const user = await this.userRepository.findOne({
-      where: { id: session.userId },
+      where: { id: req.user.id },
       select: ['id', 'username', 'email', 'fullName', 'isAdmin']
     });
 
