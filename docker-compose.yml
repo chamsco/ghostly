@@ -8,7 +8,9 @@ services:
       POSTGRES_USER: hostkinguser
       POSTGRES_PASSWORD: hostkingpass
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
     ports:
       - "5432:5432"
 
@@ -18,7 +20,9 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - type: volume
+        source: redis_data
+        target: /data
 
   # Backend API
   backend:
@@ -36,7 +40,9 @@ services:
       - SESSION_SECRET=your_session_secret_key_here
       - REDIS_URL=redis://redis:6379
     volumes:
-      - ./backend/logs:/app/logs
+      - type: bind
+        source: ./backend/logs
+        target: /app/logs
     ports:
       - "3000:3000"
     depends_on:
@@ -55,4 +61,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data: 
+    driver: local
+  redis_data:
+    driver: local 
