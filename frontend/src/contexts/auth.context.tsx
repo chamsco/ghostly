@@ -117,17 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkBiometrics();
   }, []);
 
-  // Function to check if token is expired or about to expire
-  const isTokenExpired = useCallback((token: string) => {
-    try {
-      const decoded = jwtDecode<TokenPayload>(token);
-      const currentTime = Math.floor(Date.now() / 1000);
-      return decoded.exp <= currentTime + TOKEN_REFRESH_THRESHOLD;
-    } catch {
-      return true;
-    }
-  }, []);
-
   // Function to get device name
   const getDeviceName = useCallback(() => {
     const ua = navigator.userAgent;
