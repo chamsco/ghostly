@@ -82,6 +82,7 @@ const PERSISTENT_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days in mill
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [isBiometricsAvailable, setIsBiometricsAvailable] = useState(false);
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
@@ -158,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Schedule next refresh
-      scheduleTokenRefresh(decoded.exp * 1000);
+      scheduleTokenRefresh(session);
     } catch (error) {
       console.error('Token refresh failed:', error);
       await logout(session.deviceId);
@@ -166,16 +167,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   // Function to schedule token refresh
-  const scheduleTokenRefresh = useCallback((expiresAt: number) => {
+  const scheduleTokenRefresh = useCallback((session: Session) => {
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
     }
 
-    const currentTime = Date.now();
-    const timeUntilRefresh = Math.max(0, expiresAt - currentTime - TOKEN_REFRESH_THRESHOLD * 1000);
-
-    refreshTimeoutRef.current = setTimeout(refreshToken, timeUntilRefresh);
-  }, [refreshToken]);
+    const timeUntilRefresh = Math.max(0, session.expiresAt - Date.now() - TOKEN_REFRESH_THRESHOLD * 1000);
+    refreshTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await api.post('/auth/refresh', {
+          refreshToken: session.refreshToken,
+          deviceId: session.deviceId
+        });
+        
+        const { access_token, refreshToken } = response.data;
+        const newSession = {
+          ...session,
+          token: access_token,
+          refreshToken,
+          expiresAt: Date.now() + SESSION_DURATION
+        };
+        
+        setSession(newSession);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+        scheduleTokenRefresh(newSession);
+      } catch (error) {
+        // If refresh fails, log out
+        await logout();
+      }
+    }, timeUntilRefresh);
+  }, []);
 
   // Function to fetch active devices
   const fetchDevices = useCallback(async () => {
@@ -232,58 +253,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string, rememberMe = false) => {
     try {
-      const deviceName = getDeviceName();
-      const response = await api.post('/auth/login', { 
-        username, 
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.post('/auth/login', {
+        username,
         password,
         rememberMe,
-        deviceName
+        deviceName: navigator.userAgent
       });
 
-      const { user, token, refreshToken, deviceId } = response.data;
-      const decoded = jwtDecode<TokenPayload>(token);
+      const { access_token, user, refreshToken, deviceId } = response.data;
       
-      // Calculate session expiration
-      const expiresAt = decoded.exp * 1000;
-      const sessionDuration = rememberMe ? PERSISTENT_SESSION_DURATION : SESSION_DURATION;
-      const sessionExpiresAt = Math.min(expiresAt, Date.now() + sessionDuration);
-
-      const session = { 
-        user, 
-        token, 
+      // Create session object
+      const session = {
+        user,
+        token: access_token,
         refreshToken,
-        expiresAt: sessionExpiresAt,
         deviceId,
-        deviceName
+        deviceName: navigator.userAgent,
+        expiresAt: rememberMe 
+          ? Date.now() + PERSISTENT_SESSION_DURATION 
+          : Date.now() + SESSION_DURATION
       };
 
-      // Store session
-      setSession(session);
-      setUser(user);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Save session
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-
+      
+      // Update state
+      setUser(user);
+      setSession(session);
+      setIsAuthenticated(true);
+      
       // Schedule token refresh
-      scheduleTokenRefresh(sessionExpiresAt);
-
-      // Fetch active devices
-      await fetchDevices();
-
+      scheduleTokenRefresh(session);
+      
+      // Navigate to dashboard
+      navigate('/dashboard');
+      
       toast({
-        title: 'Success',
-        description: 'Logged in successfully',
+        title: "Login successful",
+        description: `Welcome back, ${user.fullName}!`,
       });
-    } catch (error) {
-      const message = axios.isAxiosError(error) && error.response?.data?.message
-        ? error.response.data.message
-        : 'Login failed';
-      setError(message);
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-      throw error;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const errorMessage = err.response?.data?.message || 'Invalid credentials';
+        setError(errorMessage);
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: errorMessage,
+        });
+      } else {
+        setError('An unexpected error occurred');
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: "An unexpected error occurred",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -330,7 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      scheduleTokenRefresh(decoded.exp * 1000);
+      scheduleTokenRefresh(session);
       await fetchDevices();
 
       toast({
@@ -678,7 +708,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider 
       value={{ 
         user, 
-        isAuthenticated: !!user,
+        isAuthenticated,
         isLoading,
         devices,
         isBiometricsAvailable,
