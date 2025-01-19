@@ -17,8 +17,6 @@ services:
   # Redis
   redis:
     image: redis:alpine
-    sysctls:
-      - vm.overcommit_memory=1
     ports:
       - "6379:6379"
     volumes:
