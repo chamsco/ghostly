@@ -3,18 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import type { RegisterData } from '@/types/auth';
-import { AxiosError } from 'axios';
-
-interface ApiError {
-  message: string;
-}
+import { useAuth } from '@/contexts/auth.context';
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -29,35 +23,28 @@ const registerSchema = z.object({
 export function RegisterForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { register: registerUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
   });
 
-  const registerMutation = useMutation({
-    mutationFn: (data: RegisterData) => 
-      api.post<{ message: string }>('/auth/register', data),
-    onSuccess: () => {
+  const onSubmit = async (data: RegisterData) => {
+    setIsLoading(true);
+    try {
+      await registerUser(data);
       toast({
         title: 'Registration successful',
-        description: 'Please log in with your credentials',
+        description: 'Welcome to Hostking!',
       });
-      navigate('/login');
-    },
-    onError: (error: AxiosError<ApiError>) => {
+      navigate('/');
+    } catch (error: any) {
       toast({
         title: 'Registration failed',
         description: error.response?.data?.message || 'Something went wrong',
         variant: 'destructive',
       });
-    },
-  });
-
-  const onSubmit = async (data: RegisterData) => {
-    setIsLoading(true);
-    try {
-      await registerMutation.mutateAsync(data);
     } finally {
       setIsLoading(false);
     }

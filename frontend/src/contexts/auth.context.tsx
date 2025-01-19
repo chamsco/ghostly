@@ -1,23 +1,20 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { api } from '@/lib/axios';
 
 interface User {
   id: string;
   username: string;
   email: string;
   fullName: string;
-  roles: string[];
-}
-
-interface LoginResponse {
-  user: User;
-  token?: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: LoginResponse) => Promise<void>;
-  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  register: (data: any) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,16 +22,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = async (userData: LoginResponse) => {
-    setUser(userData.user);
-  };
+  const login = useCallback(async (username: string, password: string) => {
+    const response = await api.post('/auth/login', { username, password });
+    if (!response.data.requiresTwoFactor) {
+      // Get user data after successful login
+      const userResponse = await api.get('/auth/me');
+      setUser(userResponse.data);
+    }
+  }, []);
 
-  const logout = async () => {
+  const register = useCallback(async (data: any) => {
+    await api.post('/auth/register', data);
+    // Login automatically after registration
+    await login(data.username, data.password);
+  }, [login]);
+
+  const logout = useCallback(async () => {
+    await api.post('/auth/logout');
     setUser(null);
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

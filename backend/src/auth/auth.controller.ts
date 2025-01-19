@@ -140,4 +140,22 @@ export class AuthController {
     const count = await this.userRepository.count();
     return { hasUsers: count > 0 };
   }
+
+  @Get('me')
+  async getCurrentUser(@Session() session: Record<string, any>) {
+    if (!session.userId) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: session.userId },
+      select: ['id', 'username', 'email', 'fullName', 'isAdmin']
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
+  }
 } 
