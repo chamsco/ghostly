@@ -73,4 +73,25 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer components {
+  .card-gradient {
+    @apply bg-gradient-to-br from-card to-card/95 backdrop-blur-sm border border-border/50;
+  }
+
+  .animate-in {
+    animation: animate-in 0.5s ease-out;
+  }
+
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 } 
