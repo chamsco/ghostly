@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '@/lib/axios';
 import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
 interface User {
   id: string;
@@ -8,6 +11,10 @@ interface User {
   username: string;
   fullName: string;
   isAdmin: boolean;
+  twoFactorEnabled: boolean;
+  isBiometricsEnabled: boolean;
+  requiresAdditionalAuth: boolean;
+  enabledAuthMethods: string[];
 }
 
 interface Device {
@@ -31,6 +38,15 @@ interface AuthContextType {
   logoutAllDevices: () => Promise<void>;
   setupBiometrics: () => Promise<void>;
   disableBiometrics: () => Promise<void>;
+  loading: boolean;
+  error: string | null;
+  checkAuth: () => Promise<void>;
+  enable2FA: (token: string) => Promise<void>;
+  verify2FA: (token: string) => Promise<void>;
+  disable2FA: () => Promise<void>;
+  registerBiometrics: () => Promise<void>;
+  verifyBiometrics: (credentialId: string, token: string) => Promise<void>;
+  updateAuthSettings: (requiresAdditionalAuth: boolean) => Promise<void>;
 }
 
 interface RegisterData {
@@ -71,6 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
   const refreshTimeoutRef = useRef<NodeJS.Timeout>();
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Check if biometrics is available
   useEffect(() => {
@@ -259,8 +279,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch active devices
       await fetchDevices();
+
+      toast({
+        title: 'Success',
+        description: 'Logged in successfully',
+      });
     } catch (error) {
-      console.error('Login failed:', error);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Login failed';
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -310,8 +343,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
       scheduleTokenRefresh(decoded.exp * 1000);
       await fetchDevices();
+
+      toast({
+        title: 'Success',
+        description: 'Logged in successfully',
+      });
     } catch (error) {
-      console.error('Biometric login failed:', error);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Biometric login failed';
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -360,8 +406,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Enable biometrics locally
       localStorage.setItem(BIOMETRICS_KEY, 'true');
       setIsBiometricsEnabled(true);
+
+      toast({
+        title: 'Success',
+        description: 'Biometric registration successful',
+      });
     } catch (error) {
-      console.error('Failed to setup biometrics:', error);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Failed to setup biometrics';
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -369,10 +428,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const disableBiometrics = async () => {
     try {
       await api.post('/auth/biometrics/disable');
-      localStorage.removeItem(BIOMETRICS_KEY);
-      setIsBiometricsEnabled(false);
+      await checkAuth();
+      toast({
+        title: 'Success',
+        description: 'Biometrics disabled successfully',
+      });
     } catch (error) {
-      console.error('Failed to disable biometrics:', error);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Biometric disablement failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -401,8 +470,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Just refresh the devices list
         await fetchDevices();
       }
+
+      toast({
+        title: 'Success',
+        description: 'Logged out successfully',
+      });
     } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Logout failed';
       console.error('Logout failed:', error);
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -418,8 +501,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
+
+      toast({
+        title: 'Success',
+        description: 'Logged out from all devices',
+      });
     } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Logout all devices failed';
       console.error('Logout all devices failed:', error);
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -431,8 +528,166 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Automatically log in after registration
       await login(data.username, data.password, false);
+
+      toast({
+        title: 'Success',
+        description: 'Registration successful! Please log in.',
+      });
+
+      navigate('/login');
     } catch (error) {
-      console.error('Registration failed:', error);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Registration failed';
+      setError(message);
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const checkAuth = async () => {
+    try {
+      const response = await api.get<User>('/auth/me');
+      setUser(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setUser(null);
+      } else {
+        console.error('Auth check failed:', error);
+        setUser(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enable2FA = async (token: string) => {
+    try {
+      await api.post('/auth/2fa/enable', { token });
+      await checkAuth();
+      toast({
+        title: 'Success',
+        description: '2FA enabled successfully',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : '2FA enablement failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const verify2FA = async (token: string) => {
+    try {
+      await api.post('/auth/2fa/verify', { token });
+      toast({
+        title: 'Success',
+        description: '2FA verification successful',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : '2FA verification failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const disable2FA = async () => {
+    try {
+      await api.post('/auth/2fa/disable');
+      await checkAuth();
+      toast({
+        title: 'Success',
+        description: '2FA disabled successfully',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : '2FA disablement failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const registerBiometrics = async () => {
+    try {
+      const response = await api.post('/auth/biometrics/register');
+      const options = response.data;
+      // Here you would typically call the WebAuthn API with these options
+      // For demo purposes, we'll just show a success message
+      await checkAuth();
+      toast({
+        title: 'Success',
+        description: 'Biometric registration successful',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Biometric registration failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const verifyBiometrics = async (credentialId: string, token: string) => {
+    try {
+      await api.post('/auth/biometrics/verify', { credentialId, token });
+      toast({
+        title: 'Success',
+        description: 'Biometric verification successful',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Biometric verification failed';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const updateAuthSettings = async (requiresAdditionalAuth: boolean) => {
+    try {
+      await api.patch('/auth/settings', { requiresAdditionalAuth });
+      await checkAuth();
+      toast({
+        title: 'Success',
+        description: 'Authentication settings updated successfully',
+      });
+    } catch (error) {
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Failed to update authentication settings';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
       throw error;
     }
   };
@@ -452,7 +707,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         logoutAllDevices,
         setupBiometrics,
-        disableBiometrics
+        disableBiometrics,
+        loading,
+        error,
+        checkAuth,
+        enable2FA,
+        verify2FA,
+        disable2FA,
+        registerBiometrics,
+        verifyBiometrics,
+        updateAuthSettings
       }}
     >
       {children}
