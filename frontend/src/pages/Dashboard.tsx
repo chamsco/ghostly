@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
-import { Activity, Users, Server, Cpu, HardDrive } from 'lucide-react';
+import { Activity, Server, Cpu, HelpCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
 
 interface Stats {
   totalProjects: number;
