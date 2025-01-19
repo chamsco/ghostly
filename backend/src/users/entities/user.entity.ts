@@ -2,6 +2,12 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, Up
 import { Exclude } from 'class-transformer';
 import { Device } from '../../auth/entities/device.entity';
 
+export enum AuthMethod {
+  PASSWORD = 'password',
+  TWO_FACTOR = 'two_factor',
+  BIOMETRICS = 'biometrics'
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -28,7 +34,7 @@ export class User {
 
   @Column({ nullable: true })
   @Exclude()
-  twoFactorSecret?: string;
+  twoFactorSecret: string | null;
 
   @Column({ default: false })
   twoFactorEnabled: boolean;
@@ -36,12 +42,24 @@ export class User {
   @Column({ default: false })
   isBiometricsEnabled: boolean;
 
-  @Column({ type: 'json', nullable: true })
-  biometricCredentials: {
-    credentialId: string;
-    publicKey: string;
-    counter: number;
-  }[];
+  @Column({ nullable: true })
+  @Exclude()
+  biometricCredentialId: string | null;
+
+  @Column({ nullable: true })
+  @Exclude()
+  biometricChallenge: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: AuthMethod,
+    array: true,
+    default: [AuthMethod.PASSWORD]
+  })
+  enabledAuthMethods: AuthMethod[];
+
+  @Column({ default: false })
+  requiresAdditionalAuth: boolean;
 
   @OneToMany(() => Device, device => device.user)
   devices: Device[];

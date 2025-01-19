@@ -2,7 +2,9 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
+import * as speakeasy from 'speakeasy';
+import * as QRCode from 'qrcode';
+import { User, AuthMethod } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { Device } from './entities/device.entity';
 import { JwtService } from '@nestjs/jwt';
@@ -43,27 +45,71 @@ export class AuthService {
       username,
       password: hashedPassword,
       fullName,
+      enabledAuthMethods: [AuthMethod.PASSWORD],
       // First user becomes admin
       isAdmin: (await this.usersRepository.count()) === 0,
+      requiresAdditionalAuth: false
     });
 
     return this.usersRepository.save(user);
   }
 
-  async validateUser(username: string, password: string): Promise<any> {
+  async validateUser(username: string, password: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({ where: { username } });
     if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
+      return user;
     }
     return null;
   }
 
-  async generate2FASecret(userId: string) {
-    const secret = speakeasy.generateSecret({
-      name: `Ghostly:${process.env.APP_NAME || 'Development'}`
+  async login(user: User, deviceName: string, userAgent: string, ip: string, rememberMe = false) {
+    // Check if additional authentication is required
+    if (user.requiresAdditionalAuth && 
+        (user.enabledAuthMethods.includes(AuthMethod.TWO_FACTOR) || 
+         user.enabledAuthMethods.includes(AuthMethod.BIOMETRICS))) {
+      throw new UnauthorizedException('Additional authentication required');
+    }
+
+    // Create device record
+    const device = this.devicesRepository.create({
+      name: deviceName,
+      userAgent,
+      lastIp: ip,
+      user,
+      refreshToken: crypto.randomBytes(40).toString('hex')
+    });
+    await this.devicesRepository.save(device);
+
+    // Generate tokens
+    const payload = { 
+      sub: user.id,
+      username: user.username,
+      isAdmin: user.isAdmin
+    };
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: rememberMe ? '7d' : '1d'
     });
 
+    return {
+      access_token: accessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        isAdmin: user.isAdmin,
+        requiresAdditionalAuth: user.requiresAdditionalAuth,
+        enabledAuthMethods: user.enabledAuthMethods
+      },
+      refreshToken: device.refreshToken,
+      deviceId: device.id,
+      requiresAdditionalAuth: user.requiresAdditionalAuth,
+      availableAuthMethods: user.enabledAuthMethods.filter(method => method !== AuthMethod.PASSWORD)
+    };
+  }
+
+  // 2FA Methods
+  async generate2FASecret(userId: string) {
     const user = await this.usersRepository.findOne({ 
       where: { id: userId } 
     });
@@ -72,21 +118,18 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    const secret = speakeasy.generateSecret({
+      name: 'Hostking'
+    });
+
     user.twoFactorSecret = secret.base32;
     await this.usersRepository.save(user);
 
-    const otpAuthUrl = speakeasy.otpauthURL({
-      secret: secret.base32,
-      label: user.email,
-      issuer: `Ghostly:${process.env.APP_NAME || 'Development'}`,
-      encoding: 'base32'
-    });
-
-    const qrCodeUrl = await QRCode.toDataURL(otpAuthUrl);
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
     
     return {
       secret: secret.base32,
-      qrCode: qrCodeUrl
+      qrCode
     };
   }
 
@@ -116,34 +159,120 @@ export class AuthService {
     }
 
     user.twoFactorEnabled = true;
+    user.enabledAuthMethods = [...user.enabledAuthMethods, AuthMethod.TWO_FACTOR];
     await this.usersRepository.save(user);
   }
 
-  async login(user: User, deviceName: string, userAgent: string, ip: string, rememberMe = false) {
-    // Create device record
-    const device = this.devicesRepository.create({
-      name: deviceName,
-      userAgent,
-      lastIp: ip,
-      user,
-      refreshToken: crypto.randomBytes(40).toString('hex')
-    });
-    await this.devicesRepository.save(device);
-
-    // Generate tokens
-    const payload = { sub: user.id, deviceId: device.id };
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: rememberMe ? '30d' : '1d'
+  async disable2FA(userId: string): Promise<void> {
+    const user = await this.usersRepository.findOne({ 
+      where: { id: userId } 
     });
 
-    return {
-      user,
-      token: accessToken,
-      refreshToken: device.refreshToken,
-      deviceId: device.id
-    };
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    user.twoFactorEnabled = false;
+    user.twoFactorSecret = null;
+    user.enabledAuthMethods = user.enabledAuthMethods.filter(
+      method => method !== AuthMethod.TWO_FACTOR
+    );
+    await this.usersRepository.save(user);
   }
 
+  // Biometric Methods
+  async generateBiometricRegistrationOptions(user: User) {
+    const challenge = crypto.randomBytes(32);
+    const registrationOptions = {
+      challenge: challenge.toString('base64'),
+      rp: {
+        name: 'Hostking',
+        id: process.env.DOMAIN || 'localhost'
+      },
+      user: {
+        id: user.id,
+        name: user.username,
+        displayName: user.fullName
+      },
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' }, // ES256
+        { alg: -257, type: 'public-key' } // RS256
+      ],
+      timeout: 60000,
+      attestation: 'direct',
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'preferred',
+        requireResidentKey: false
+      }
+    };
+
+    user.biometricChallenge = challenge.toString('base64');
+    await this.usersRepository.save(user);
+
+    return registrationOptions;
+  }
+
+  async verifyBiometricRegistration(
+    user: User,
+    credentialId: string,
+    attestationObject: string,
+    clientDataJSON: string
+  ) {
+    // In a production environment, you would verify the attestation here
+    // For this demo, we'll just store the credential ID
+    user.biometricCredentialId = credentialId;
+    user.isBiometricsEnabled = true;
+    if (!user.enabledAuthMethods.includes(AuthMethod.BIOMETRICS)) {
+      user.enabledAuthMethods = [
+        ...user.enabledAuthMethods,
+        AuthMethod.BIOMETRICS
+      ];
+    }
+    await this.usersRepository.save(user);
+  }
+
+  async generateBiometricAuthenticationOptions(user: User) {
+    const challenge = crypto.randomBytes(32);
+    const authOptions = {
+      challenge: challenge.toString('base64'),
+      allowCredentials: [{
+        type: 'public-key',
+        id: user.biometricCredentialId
+      }],
+      timeout: 60000,
+      userVerification: 'preferred',
+      rpId: process.env.DOMAIN || 'localhost'
+    };
+
+    user.biometricChallenge = challenge.toString('base64');
+    await this.usersRepository.save(user);
+
+    return authOptions;
+  }
+
+  async verifyBiometricAssertion(
+    user: User,
+    credentialId: string,
+    authenticatorData: string,
+    clientDataJSON: string,
+    signature: string
+  ): Promise<boolean> {
+    // In a production environment, you would verify the assertion here
+    // For this demo, we'll just check if the credential ID matches
+    return user.biometricCredentialId === credentialId;
+  }
+
+  async disableBiometrics(user: User) {
+    user.isBiometricsEnabled = false;
+    user.biometricCredentialId = null;
+    user.enabledAuthMethods = user.enabledAuthMethods.filter(
+      method => method !== AuthMethod.BIOMETRICS
+    );
+    await this.usersRepository.save(user);
+  }
+
+  // Common Methods
   async refreshToken(refreshToken: string, deviceId: string) {
     const device = await this.devicesRepository.findOne({
       where: { id: deviceId, refreshToken },
@@ -197,93 +326,8 @@ export class AuthService {
       id: device.id,
       name: device.name,
       lastActive: device.lastActive,
-      current: false // This will be set to true on the frontend for the current device
+      current: false
     }));
-  }
-
-  // Biometric authentication methods
-  async generateBiometricRegistrationOptions(user: User) {
-    const challenge = crypto.randomBytes(32);
-    
-    return {
-      challenge: challenge.toString('base64'),
-      rpId: process.env.WEBAUTHN_RP_ID || 'localhost',
-      user: {
-        id: user.id,
-        name: user.username,
-        displayName: user.fullName
-      }
-    };
-  }
-
-  async verifyBiometricRegistration(
-    user: User,
-    credentialId: string,
-    publicKey: string,
-    challenge: string
-  ) {
-    // In a real implementation, you would verify the attestation
-    // using @simplewebauthn/server package
-    
-    const credential = {
-      credentialId,
-      publicKey,
-      counter: 0
-    };
-
-    user.biometricCredentials = user.biometricCredentials || [];
-    user.biometricCredentials.push(credential);
-    user.isBiometricsEnabled = true;
-
-    await this.usersRepository.save(user);
-  }
-
-  async generateBiometricAuthenticationOptions(user: User) {
-    if (!user.isBiometricsEnabled) {
-      throw new BadRequestException('Biometrics not enabled for this user');
-    }
-
-    const challenge = crypto.randomBytes(32);
-    
-    return {
-      challenge: challenge.toString('base64'),
-      rpId: process.env.WEBAUTHN_RP_ID || 'localhost',
-      allowCredentials: user.biometricCredentials.map(cred => ({
-        id: cred.credentialId,
-        type: 'public-key'
-      }))
-    };
-  }
-
-  async verifyBiometricAssertion(
-    user: User,
-    credentialId: string,
-    authenticatorData: string,
-    clientDataJSON: string,
-    signature: string
-  ) {
-    // In a real implementation, you would verify the assertion
-    // using @simplewebauthn/server package
-    
-    const credential = user.biometricCredentials.find(
-      cred => cred.credentialId === credentialId
-    );
-
-    if (!credential) {
-      throw new UnauthorizedException('Invalid credential');
-    }
-
-    // Update the credential counter
-    credential.counter += 1;
-    await this.usersRepository.save(user);
-
-    return true;
-  }
-
-  async disableBiometrics(user: User) {
-    user.isBiometricsEnabled = false;
-    user.biometricCredentials = [];
-    await this.usersRepository.save(user);
   }
 
   async findByUsername(username: string): Promise<User | null> {
@@ -291,9 +335,24 @@ export class AuthService {
   }
 
   async findByCredentialId(credentialId: string): Promise<User | null> {
-    return this.usersRepository
-      .createQueryBuilder('user')
-      .where(`user.biometricCredentials @> '[{"credentialId": :credentialId}]'`, { credentialId })
-      .getOne();
+    return this.usersRepository.findOne({
+      where: { biometricCredentialId: credentialId }
+    });
+  }
+
+  async updateAuthenticationSettings(
+    userId: string,
+    requiresAdditionalAuth: boolean
+  ): Promise<void> {
+    const user = await this.usersRepository.findOne({ 
+      where: { id: userId } 
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    user.requiresAdditionalAuth = requiresAdditionalAuth;
+    await this.usersRepository.save(user);
   }
 } 
