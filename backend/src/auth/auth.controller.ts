@@ -134,4 +134,10 @@ export class AuthController {
     session.destroy();
     return { message: 'Logged out successfully' };
   }
+
+  @Get('check-users')
+  async checkUsers() {
+    const count = await this.userRepository.count();
+    return { hasUsers: count > 0 };
+  }
 } 

@@ -8,10 +8,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Enable CORS
+  // Enable CORS with specific configuration
   app.enableCors({
-    origin: configService.get('FRONTEND_URL') || 'http://localhost:3001',
+    origin: ['http://168.119.111.140:3001'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   });
 
   // Global validation pipe
@@ -25,8 +27,9 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for HTTP
         maxAge: 1000 * 60 * 60 * 24, // 1 day
+        sameSite: 'lax',
       },
     }),
   );
@@ -34,6 +37,6 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  await app.listen(3000);
+  await app.listen(3000, '0.0.0.0');
 }
 bootstrap(); 
