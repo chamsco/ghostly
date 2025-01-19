@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && !user?.roles?.includes('admin')) {
+  if (requireAdmin && !user?.isAdmin) {
     return <Navigate to="/" replace />;
   }
 
