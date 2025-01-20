@@ -18,9 +18,14 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create directory for logs
+# Create directory for logs and copy wait script
 RUN mkdir -p /app/logs && \
-    chown -R node:node /app
+    mkdir -p /scripts
+
+# Copy and set permissions for wait script (do this before switching user)
+COPY scripts/wait-for-db.sh /scripts/
+RUN chmod +x /scripts/wait-for-db.sh && \
+    chown -R node:node /app /scripts
 
 # Switch to non-root user
 USER node
@@ -28,11 +33,7 @@ USER node
 # Define volume mount point
 VOLUME ["/app/logs"]
 
-# Make wait script executable
-COPY scripts/wait-for-db.sh /wait-for-db.sh
-RUN chmod +x /wait-for-db.sh
-
 EXPOSE 3000
 
 # Use wait script before starting the app
-CMD ["/wait-for-db.sh", "postgres", "npm", "run", "start:prod"] 
+CMD ["/scripts/wait-for-db.sh", "postgres", "npm", "run", "start:prod"] 
