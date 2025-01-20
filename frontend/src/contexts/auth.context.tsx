@@ -7,21 +7,17 @@ import axios from 'axios';
 
 interface User {
   id: string;
-  email: string;
   username: string;
+  email: string;
   fullName: string;
   isAdmin: boolean;
-  twoFactorEnabled: boolean;
-  isBiometricsEnabled: boolean;
-  requiresAdditionalAuth: boolean;
-  enabledAuthMethods: string[];
 }
 
 interface Device {
   id: string;
   name: string;
-  lastActive: string;
-  current: boolean;
+  type: string;
+  lastUsed: Date;
 }
 
 interface AuthContextType {

@@ -186,6 +186,7 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
   const [historicalData, setHistoricalData] = useState<any[]>([]);
 
   // Debounced fetch function

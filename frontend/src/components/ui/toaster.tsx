@@ -8,6 +8,11 @@ import {
 } from "@/components/ui/toast"
 import { useToast } from "@/components/ui/use-toast"
 
+interface ToastProps extends React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>,
+  VariantProps<typeof toastVariants> {
+  children?: React.ReactNode
+}
+
 export function Toaster() {
   const { toasts } = useToast()
 
