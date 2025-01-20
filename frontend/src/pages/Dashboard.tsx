@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Server, Cpu, HelpCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { metricsService, SystemMetrics } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
