@@ -760,28 +760,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const validateSession = async (): Promise<boolean> => {
+  const validateSession = async () => {
     try {
       const sessionStr = localStorage.getItem(STORAGE_KEY);
-      if (!sessionStr) return false;
-
-      const session: SecureSession = JSON.parse(sessionStr);
-      
-      // Check multiple validation criteria
-      if (
-        !session.token ||
-        !session.refreshToken ||
-        !securityUtils.isTokenValid(session.token) ||
-        Date.now() - session.lastActivity > INACTIVITY_TIMEOUT ||
-        Date.now() >= session.expiresAt
-      ) {
-        await logout();
+      if (!sessionStr) {
+        setIsAuthenticated(false);
+        setUser(null);
         return false;
       }
 
+      const session: SecureSession = JSON.parse(sessionStr);
+      const now = Date.now();
+
+      // Check if session is expired
+      if (now >= session.expiresAt) {
+        localStorage.removeItem(STORAGE_KEY);
+        setIsAuthenticated(false);
+        setUser(null);
+        return false;
+      }
+
+      // If we already have a valid user and token, don't revalidate
+      if (isAuthenticated && user) {
+        return true;
+      }
+
+      // Validate with backend
+      const response = await api.get('/auth/me');
+      setUser(response.data);
+      setIsAuthenticated(true);
       return true;
-    } catch {
-      await logout();
+    } catch (error) {
+      localStorage.removeItem(STORAGE_KEY);
+      setIsAuthenticated(false);
+      setUser(null);
       return false;
     }
   };
@@ -960,13 +972,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
       async (config) => {
-        if (await validateSession()) {
-          const sessionStr = localStorage.getItem(STORAGE_KEY);
-          if (sessionStr) {
-            const session: SecureSession = JSON.parse(sessionStr);
-            const token = securityUtils.decryptToken(session.token);
-            config.headers.Authorization = `Bearer ${token}`;
-          }
+        // Skip validation for auth endpoints to prevent loops
+        if (config.url?.includes('/auth/') && !config.url.includes('/auth/me')) {
+          return config;
+        }
+
+        const sessionStr = localStorage.getItem(STORAGE_KEY);
+        if (sessionStr) {
+          const session: SecureSession = JSON.parse(sessionStr);
+          const token = securityUtils.decryptToken(session.token);
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -985,10 +1000,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const session: SecureSession = JSON.parse(sessionStr);
               const token = securityUtils.decryptToken(session.token);
               error.config.headers.Authorization = `Bearer ${token}`;
+              return api(error.config);
             }
-            return api(error.config);
           } catch (refreshError) {
-            await logout();
+            // Only logout if we're not already on the login page
+            if (!window.location.pathname.includes('/login')) {
+              await logout();
+            }
             throw refreshError;
           }
         }
@@ -1000,7 +1018,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.interceptors.request.eject(requestInterceptor);
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, [validateSession, refreshSession, logout]);
+  }, [refreshSession, logout]);
 
   return (
     <AuthContext.Provider 
