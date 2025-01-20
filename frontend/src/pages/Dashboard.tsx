@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Server, Cpu, HelpCircle } from 'lucide-react';
@@ -128,6 +128,18 @@ function SystemTrafficChart() {
   );
 }
 
+// Add debounce utility
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
 export function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({
@@ -144,47 +156,38 @@ export function Dashboard() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [historicalData, setHistoricalData] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchStats = async () => {
+  // Debounced fetch function
+  const debouncedFetch = useCallback(
+    debounce(async () => {
       try {
-        setIsLoading(true);
-        const response = await api.get('/dashboard/stats');
-        setStats(response.data);
-        setError(null);
-      } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error);
-        setError('Failed to load dashboard statistics');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-    // Set up polling every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        const [currentMetrics, historical] = await Promise.all([
+        const [statsResponse, currentMetrics, historical] = await Promise.all([
+          api.get('/dashboard/stats'),
           metricsService.getSystemMetrics(),
           metricsService.getHistoricalMetrics()
         ]);
+        
+        setStats(statsResponse.data);
         setMetrics(currentMetrics);
         setHistoricalData(historical.dataPoints);
-      } catch (err) {
-        setError('Failed to fetch metrics');
-        console.error('Error fetching metrics:', err);
+        setError(null);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        setError('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
       }
+    }, 1000),
+    []
+  );
+
+  useEffect(() => {
+    debouncedFetch();
+    // Set up polling every minute instead of every 30 seconds
+    const interval = setInterval(debouncedFetch, 60000);
+    return () => {
+      clearInterval(interval);
     };
-
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [debouncedFetch]);
 
   if (isLoading) {
     return (
@@ -244,107 +247,51 @@ export function Dashboard() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">CPU Usage</span>
-                    <span className="font-medium">{stats.resourceUsage?.cpu ?? 0}%</span>
+                    <span className="font-medium">{metrics?.cpu.usage.toFixed(1) ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${stats.resourceUsage?.cpu ?? 0}%` }}
+                      style={{ width: `${metrics?.cpu.usage ?? 0}%` }}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {metrics?.cpu.cores} Cores @ {metrics?.cpu.speed}MHz
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Memory Usage</span>
-                    <span className="font-medium">{stats.resourceUsage?.memory ?? 0}%</span>
+                    <span className="font-medium">{metrics?.memory.usagePercentage.toFixed(1) ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${stats.resourceUsage?.memory ?? 0}%` }}
+                      style={{ width: `${metrics?.memory.usagePercentage ?? 0}%` }}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatBytes(metrics?.memory.used || 0)} / {formatBytes(metrics?.memory.total || 0)}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Storage Usage</span>
-                    <span className="font-medium">{stats.resourceUsage?.storage ?? 0}%</span>
+                    <span className="font-medium">{metrics?.disk?.usagePercentage.toFixed(1) ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${stats.resourceUsage?.storage ?? 0}%` }}
+                      style={{ width: `${metrics?.disk?.usagePercentage ?? 0}%` }}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatBytes(metrics?.disk?.used || 0)} / {formatBytes(metrics?.disk?.total || 0)}
+                  </p>
                 </div>
               </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">CPU Usage</h3>
-              <Tooltip>
-                <TooltipTrigger>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Current CPU utilization across all cores</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">{metrics?.cpu.usage.toFixed(1)}%</div>
-              <Progress value={metrics?.cpu.usage || 0} className="mt-2" />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {metrics?.cpu.cores} Cores @ {metrics?.cpu.speed}MHz
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Memory Usage</h3>
-              <Tooltip>
-                <TooltipTrigger>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Current RAM utilization</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">{metrics?.memory.usagePercentage.toFixed(1)}%</div>
-              <Progress value={metrics?.memory.usagePercentage || 0} className="mt-2" />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {formatBytes(metrics?.memory.used || 0)} / {formatBytes(metrics?.memory.total || 0)}
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Storage Usage</h3>
-              <Tooltip>
-                <TooltipTrigger>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Current disk space utilization</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-bold">{metrics?.disk?.usagePercentage.toFixed(1)}%</div>
-              <Progress value={metrics?.disk?.usagePercentage || 0} className="mt-2" />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {formatBytes(metrics?.disk?.used || 0)} / {formatBytes(metrics?.disk?.total || 0)}
-              </p>
             </div>
           </Card>
         </div>
@@ -389,11 +336,11 @@ export function Dashboard() {
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="network" 
+                  dataKey="disk" 
                   stackId="1" 
                   stroke="#ffc658" 
                   fill="#ffc658" 
-                  name="Network"
+                  name="Storage"
                 />
               </AreaChart>
             </ResponsiveContainer>
