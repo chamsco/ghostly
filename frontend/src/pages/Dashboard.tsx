@@ -5,7 +5,7 @@ import { Activity, Server, Cpu, HelpCircle, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { metricsService } from '@/services/metrics';
+import { metricsService, SystemMetrics } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,8 @@ interface Stats {
   };
 }
 
-interface EndpointState {
-  data: any;
+interface EndpointState<T = any> {
+  data: T | null;
   isLoading: boolean;
   error: string | null;
   retryCount: number;
@@ -180,13 +180,13 @@ function LoadingCard() {
 
 export function Dashboard() {
   const { user } = useAuth();
-  const [dashboardStats, setDashboardStats] = useState<EndpointState>({
+  const [dashboardStats, setDashboardStats] = useState<EndpointState<Stats>>({
     data: null,
     isLoading: true,
     error: null,
     retryCount: 0
   });
-  const [systemMetrics, setSystemMetrics] = useState<EndpointState>({
+  const [systemMetrics, setSystemMetrics] = useState<EndpointState<SystemMetrics>>({
     data: null,
     isLoading: true,
     error: null,
