@@ -1,7 +1,10 @@
-FROM node:20-alpine
+FROM node:18-alpine
+
+# Install PostgreSQL client
+RUN apk add --no-cache postgresql-client
 
 # Set working directory
-WORKDIR /app
+WORKDIR /usr/src/app
 
 # Copy package files first for better caching
 COPY package*.json ./
@@ -25,5 +28,11 @@ USER node
 # Define volume mount point
 VOLUME ["/app/logs"]
 
+# Make wait script executable
+COPY scripts/wait-for-db.sh /wait-for-db.sh
+RUN chmod +x /wait-for-db.sh
+
 EXPOSE 3000
-CMD ["node", "dist/main.js"] 
+
+# Use wait script before starting the app
+CMD ["/wait-for-db.sh", "postgres", "npm", "run", "start:prod"] 
