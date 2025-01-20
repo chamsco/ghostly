@@ -313,7 +313,7 @@ export class AuthController {
       });
 
       if (!user) {
-        console.error('❌ User not found:', {
+        console.log('❌ User not found:', {
           userId: req.user.id,
           timestamp: new Date().toISOString()
         });
@@ -334,6 +334,34 @@ export class AuthController {
         timestamp: new Date().toISOString()
       });
       throw error;
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('devices')
+  async getUserDevices(@Req() req: RequestWithUser) {
+    console.log('🔍 Getting user devices:', {
+      userId: req.user.id,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      const devices = await this.authService.getDevices(req.user.id);
+      
+      console.log('✅ Devices fetched:', {
+        userId: req.user.id,
+        deviceCount: devices.length,
+        timestamp: new Date().toISOString()
+      });
+
+      return devices;
+    } catch (error) {
+      console.error('❌ Error fetching devices:', {
+        error,
+        userId: req.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      throw new InternalServerErrorException('Failed to fetch devices');
     }
   }
 } 
