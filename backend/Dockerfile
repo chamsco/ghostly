@@ -9,8 +9,8 @@ WORKDIR /usr/src/app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies and NestJS CLI globally
-RUN npm install -g @nestjs/cli && npm install
+# Install dependencies
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
@@ -18,20 +18,17 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create directory for logs and copy wait script
-RUN mkdir -p /app/logs && \
-    mkdir -p /scripts
-
-# Copy and set permissions for wait script (do this before switching user)
+# Create scripts directory and copy wait script
+RUN mkdir -p /scripts
 COPY scripts/wait-for-db.sh /scripts/
-RUN chmod +x /scripts/wait-for-db.sh && \
-    chown -R node:node /app /scripts
+RUN chmod +x /scripts/wait-for-db.sh
+
+# Create logs directory
+RUN mkdir -p /usr/src/app/logs && \
+    chown -R node:node /usr/src/app /scripts
 
 # Switch to non-root user
 USER node
-
-# Define volume mount point
-VOLUME ["/app/logs"]
 
 EXPOSE 3000
 
