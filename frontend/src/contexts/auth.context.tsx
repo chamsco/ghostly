@@ -86,12 +86,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [isBiometricsAvailable, setIsBiometricsAvailable] = useState(false);
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check auth status on mount and when token changes
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get<User>('/auth/me');
+        setUser(response.data);
+        setIsAuthenticated(true);
+        await fetchDevices();
+      } catch (error) {
+        setUser(null);
+        setIsAuthenticated(false);
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          navigate('/login');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [navigate]);
 
   // Check if biometrics is available
   useEffect(() => {
@@ -126,56 +147,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return `${browser} on ${os}`;
   }, []);
 
-  // Function to refresh the token
-  const refreshToken = useCallback(async () => {
-    if (!session?.refreshToken) return;
-
-    try {
-      const response = await api.post('/auth/refresh', {
-        refreshToken: session.refreshToken,
-        deviceId: session.deviceId
-      });
-
-      const { token: newToken, refreshToken: newRefreshToken } = response.data;
-      const decoded = jwtDecode<TokenPayload>(newToken);
-      
-      setSession(prev => prev ? {
-        ...prev,
-        token: newToken,
-        refreshToken: newRefreshToken,
-        expiresAt: decoded.exp * 1000
-      } : null);
-
-      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
-      // Store updated session
-      if (session) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          ...session,
-          token: newToken,
-          refreshToken: newRefreshToken,
-          expiresAt: decoded.exp * 1000
-        }));
-      }
-
-      // Schedule next refresh
-      scheduleTokenRefresh(session);
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      await logout(session.deviceId);
-    }
-  }, [session]);
-
-  // Function to schedule token refresh
-  const scheduleTokenRefresh = useCallback((session: Session) => {
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-
-    const timeUntilRefresh = Math.max(0, session.expiresAt - Date.now() - TOKEN_REFRESH_THRESHOLD * 1000);
-    refreshTimeoutRef.current = setTimeout(refreshToken, timeUntilRefresh);
-  }, [refreshToken]);
-
   // Function to fetch active devices
   const fetchDevices = useCallback(async () => {
     if (!user) return;
@@ -186,48 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to fetch devices:', error);
     }
   }, [user]);
-
-  // Restore session on mount
-  useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        setIsLoading(true);
-        const storedSession = localStorage.getItem(STORAGE_KEY);
-        if (!storedSession) {
-          setIsLoading(false);
-          return;
-        }
-
-        const session = JSON.parse(storedSession) as Session;
-        if (session.expiresAt < Date.now()) {
-          localStorage.removeItem(STORAGE_KEY);
-          setIsLoading(false);
-          return;
-        }
-
-        setSession(session);
-        setUser(session.user);
-        api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
-        await fetchDevices();
-      } catch (error) {
-        console.error('Failed to restore session:', error);
-        localStorage.removeItem(STORAGE_KEY);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    restoreSession();
-  }, []);
-
-  // Clean up refresh timer
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const login = async (username: string, password: string, rememberMe = false) => {
     try {
@@ -241,35 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         deviceName: navigator.userAgent
       });
 
-      const { access_token, user, refreshToken, deviceId } = response.data;
+      const { user } = response.data;
       
-      // Set the Authorization header immediately
-      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
-      // Create session object
-      const session = {
-        user,
-        token: access_token,
-        refreshToken,
-        deviceId,
-        deviceName: navigator.userAgent,
-        expiresAt: rememberMe 
-          ? Date.now() + PERSISTENT_SESSION_DURATION 
-          : Date.now() + SESSION_DURATION
-      };
-
-      // Save session
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      
-      // Update state
       setUser(user);
-      setSession(session);
       setIsAuthenticated(true);
       
-      // Schedule token refresh
-      scheduleTokenRefresh(session);
-      
-      // Navigate to dashboard
       navigate('/dashboard');
       
       toast({
@@ -295,6 +200,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const logout = async (deviceId?: string) => {
+    try {
+      await api.post('/auth/logout', { deviceId });
+      
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/login');
+      
+      toast({
+        title: 'Success',
+        description: 'Logged out successfully',
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast({
+        variant: "destructive",
+        title: "Logout failed",
+        description: "Failed to logout. Please try again.",
+      });
     }
   };
 
@@ -337,11 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         deviceName: getDeviceName()
       };
 
-      setSession(session);
       setUser(user);
+      setIsAuthenticated(true);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      scheduleTokenRefresh(session);
       await fetchDevices();
 
       toast({
@@ -446,62 +372,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = async (deviceId?: string) => {
-    try {
-      if (session?.refreshToken) {
-        // Invalidate refresh token on the server
-        await api.post('/auth/logout', {
-          refreshToken: session.refreshToken,
-          deviceId: deviceId || session.deviceId
-        }).catch(console.error);
-      }
-
-      // If logging out current device, clear local session
-      if (!deviceId || deviceId === session?.deviceId) {
-        setSession(null);
-        setUser(null);
-        delete api.defaults.headers.common['Authorization'];
-        localStorage.removeItem(STORAGE_KEY);
-        
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
-        }
-      } else {
-        // Just refresh the devices list
-        await fetchDevices();
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Logged out successfully',
-      });
-    } catch (error) {
-      const message = axios.isAxiosError(error) && error.response?.data?.message
-        ? error.response.data.message
-        : 'Logout failed';
-      console.error('Logout failed:', error);
-      setError(message);
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
   const logoutAllDevices = async () => {
     try {
       await api.post('/auth/logout/all');
-      setSession(null);
       setUser(null);
-      delete api.defaults.headers.common['Authorization'];
+      setIsAuthenticated(false);
       localStorage.removeItem(STORAGE_KEY);
       
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-
       toast({
         title: 'Success',
         description: 'Logged out from all devices',

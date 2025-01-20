@@ -74,36 +74,52 @@ function MetricCard({
   );
 }
 
-function SystemTrafficChart() {
+function SystemTrafficChart({ data }: { data: any[] }) {
   return (
     <Card className="p-6 card-gradient">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium">System Traffic Overview</h3>
-          <span className="text-xs text-muted-foreground">Real-time Traffic</span>
+          <Tooltip>
+            <TooltipTrigger>
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>24-hour system resource utilization</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trafficData}>
+            <AreaChart data={data}>
               <defs>
-                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                <linearGradient id="colorCPU" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorMemory" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ffc658" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ffc658" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis
-                dataKey="time"
+                dataKey="timestamp"
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                tickFormatter={(value) => new Date(value).toLocaleTimeString()}
               />
               <YAxis
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `${value}`}
+                tickFormatter={(value) => `${value}%`}
               />
               <RechartsTooltip
                 contentStyle={{
@@ -114,10 +130,27 @@ function SystemTrafficChart() {
               />
               <Area
                 type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
+                dataKey="cpu"
+                name="CPU"
+                stroke="#8884d8"
                 fillOpacity={1}
-                fill="url(#colorValue)"
+                fill="url(#colorCPU)"
+              />
+              <Area
+                type="monotone"
+                dataKey="memory"
+                name="Memory"
+                stroke="#82ca9d"
+                fillOpacity={1}
+                fill="url(#colorMemory)"
+              />
+              <Area
+                type="monotone"
+                dataKey="disk"
+                name="Storage"
+                stroke="#ffc658"
+                fillOpacity={1}
+                fill="url(#colorDisk)"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -237,7 +270,7 @@ export function Dashboard() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <SystemTrafficChart />
+          <SystemTrafficChart data={historicalData} />
           
           <Card className="p-6 card-gradient">
             <div className="space-y-4">
@@ -294,57 +327,6 @@ export function Dashboard() {
             </div>
           </Card>
         </div>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">System Traffic Overview</h3>
-            <Tooltip>
-              <TooltipTrigger>
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>24-hour system resource utilization</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={historicalData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="timestamp" 
-                  tickFormatter={(value) => new Date(value).toLocaleTimeString()}
-                />
-                <YAxis />
-                <RechartsTooltip />
-                <Area 
-                  type="monotone" 
-                  dataKey="cpu" 
-                  stackId="1" 
-                  stroke="#8884d8" 
-                  fill="#8884d8" 
-                  name="CPU"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="memory" 
-                  stackId="1" 
-                  stroke="#82ca9d" 
-                  fill="#82ca9d" 
-                  name="Memory"
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="disk" 
-                  stackId="1" 
-                  stroke="#ffc658" 
-                  fill="#ffc658" 
-                  name="Storage"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
       </div>
     </TooltipProvider>
   );
