@@ -445,6 +445,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, user?.id, fetchDevices]);
 
+  // Add biometrics availability check effect
+  useEffect(() => {
+    const checkBiometrics = async () => {
+      try {
+        if (typeof window !== 'undefined' && 
+            'credentials' in navigator && 
+            'PublicKeyCredential' in window &&
+            typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          setIsBiometricsAvailable(available);
+          const biometricsEnabled = localStorage.getItem(BIOMETRICS_KEY);
+          setIsBiometricsEnabled(!!biometricsEnabled);
+        } else {
+          setIsBiometricsAvailable(false);
+          setIsBiometricsEnabled(false);
+        }
+      } catch (error) {
+        console.error('Biometrics check failed:', error);
+        setIsBiometricsAvailable(false);
+        setIsBiometricsEnabled(false);
+      }
+    };
+    checkBiometrics();
+  }, []);
+
   const login = async (username: string, password: string, rememberMe = false) => {
     try {
       // Check rate limiting and lockout
