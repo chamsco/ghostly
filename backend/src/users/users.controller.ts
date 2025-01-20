@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { UserResponseDto } from './dto/user-response.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -10,7 +11,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  async getAllUsers(): Promise<Partial<User>[]> {
+  async getAllUsers(): Promise<UserResponseDto[]> {
     try {
       const users = await this.usersService.findAll();
       return users.map(user => ({
@@ -38,7 +39,7 @@ export class UsersController {
     password: string;
     fullName: string;
     isAdmin?: boolean;
-  }): Promise<Partial<User>> {
+  }): Promise<UserResponseDto> {
     try {
       const user = await this.usersService.create(userData);
       return {
@@ -62,7 +63,7 @@ export class UsersController {
   async updateUser(
     @Param('id') id: string,
     @Body() userData: Partial<User>
-  ): Promise<Partial<User>> {
+  ): Promise<UserResponseDto> {
     try {
       const user = await this.usersService.update(id, userData);
       return {
