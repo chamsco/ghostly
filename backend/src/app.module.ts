@@ -9,6 +9,7 @@ import { User } from './users/entities/user.entity';
 import { Device } from './auth/entities/device.entity';
 import { Project } from './projects/entities/project.entity';
 import { SecurityMiddleware } from './middleware/security.middleware';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { SecurityMiddleware } from './middleware/security.middleware';
     AuthModule,
     UsersModule,
     ProjectsModule,
+    MetricsModule,
   ],
 })
 export class AppModule implements NestModule {
