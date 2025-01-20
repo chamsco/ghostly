@@ -1,7 +1,5 @@
-FROM node:18-alpine
-
-# Install PostgreSQL client
-RUN apk add --no-cache postgresql-client
+# Build stage
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -10,7 +8,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
@@ -18,8 +16,23 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Create scripts directory and copy wait script
-RUN mkdir -p /scripts
+# Production stage
+FROM node:20-alpine
+
+# Install PostgreSQL client
+RUN apk add --no-cache postgresql-client
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy built application from builder stage
+COPY --from=builder /usr/src/app/dist ./dist
 COPY scripts/wait-for-db.sh /scripts/
 RUN chmod +x /scripts/wait-for-db.sh
 
