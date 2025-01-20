@@ -5,7 +5,7 @@ import { Activity, Server, Cpu, HelpCircle, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { metricsService, SystemMetrics } from '@/services/metrics';
+import { metricsService } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -154,18 +154,6 @@ function SystemTrafficChart({ data }: { data: any[] }) {
       </div>
     </Card>
   );
-}
-
-// Add debounce utility
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
 }
 
 function ErrorAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
