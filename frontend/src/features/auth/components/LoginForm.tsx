@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 
-const loginSchema = z.object({
+const formSchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().default(false),
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type LoginFormData = z.infer<typeof formSchema>;
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -27,22 +28,23 @@ export function LoginForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(formSchema),
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
     try {
-      await login(data.username, data.password);
+      setIsLoading(true);
+      await login(data.username, data.password, data.rememberMe);
       toast({
         title: 'Login successful',
         description: 'Welcome back!',
       });
-      navigate('/');
-    } catch (error: any) {
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: 'Login failed',
-        description: error.response?.data?.message || 'Invalid credentials',
+        title: 'Error',
+        description: 'Invalid credentials. Please try again.',
         variant: 'destructive',
       });
     } finally {

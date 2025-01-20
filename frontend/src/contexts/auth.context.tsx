@@ -5,12 +5,63 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import axios from 'axios';
 
+// Security utilities
+const securityUtils = {
+  encryptToken: (token: string): string => {
+    // TODO: Implement actual encryption
+    return token;
+  },
+  
+  decryptToken: (encryptedToken: string): string => {
+    // TODO: Implement actual decryption
+    return encryptedToken;
+  },
+  
+  isTokenValid: (token: string): boolean => {
+    try {
+      const decoded = jwtDecode<TokenPayload>(token);
+      return decoded.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
+  }
+};
+
+// Error types
+interface AuthError extends Error {
+  code: 'AUTH_FAILED' | 'NETWORK_ERROR' | 'TOKEN_EXPIRED' | 'INVALID_TOKEN' | 'SESSION_EXPIRED';
+  details?: unknown;
+}
+
+// Auth status enum
+enum AuthStatus {
+  IDLE = 'IDLE',
+  LOADING = 'LOADING',
+  AUTHENTICATED = 'AUTHENTICATED',
+  UNAUTHENTICATED = 'UNAUTHENTICATED',
+  ERROR = 'ERROR'
+}
+
+interface SecureSession {
+  user: User;
+  token: string;
+  refreshToken: string;
+  expiresAt: number;
+  deviceId: string;
+  deviceName: string;
+  lastActivity: number;
+  sessionDuration: number;
+}
+
 interface User {
   id: string;
   username: string;
   email: string;
   fullName: string;
   isAdmin: boolean;
+  twoFactorEnabled: boolean;
+  isBiometricsEnabled: boolean;
+  requiresAdditionalAuth: boolean;
 }
 
 interface Device {
@@ -20,6 +71,22 @@ interface Device {
   lastUsed: Date;
 }
 
+interface TokenPayload {
+  exp: number;
+  sub: string;
+  deviceId: string;
+}
+
+// Constants
+const STORAGE_KEY = 'squadron:session';
+const BIOMETRICS_KEY = 'squadron:biometrics';
+const TOKEN_REFRESH_THRESHOLD = 5 * 60; // 5 minutes in seconds
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const PERSISTENT_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -27,53 +94,53 @@ interface AuthContextType {
   devices: Device[];
   isBiometricsAvailable: boolean;
   isBiometricsEnabled: boolean;
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
+  authStatus: AuthStatus;
+  authError: AuthError | null;
+  isLocked: boolean;
+  remainingAttempts: number;
+  sessionInfo: {
+    expiresIn: number;
+    lastActivity: Date;
+    currentDevice: Device;
+  } | null;
+  login: (username: string, password: string, rememberMe: boolean) => Promise<void>;
   loginWithBiometrics: () => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: (deviceId?: string) => Promise<void>;
+  register: (userData: { username: string; email: string; password: string; fullName: string }) => Promise<void>;
+  logout: () => Promise<void>;
   logoutAllDevices: () => Promise<void>;
   setupBiometrics: () => Promise<void>;
   disableBiometrics: () => Promise<void>;
-  loading: boolean;
-  error: string | null;
-  checkAuth: () => Promise<void>;
-  enable2FA: (token: string) => Promise<void>;
-  verify2FA: (token: string) => Promise<void>;
+  enable2FA: (code: string) => Promise<void>;
   disable2FA: () => Promise<void>;
-  registerBiometrics: () => Promise<void>;
-  verifyBiometrics: (credentialId: string, token: string) => Promise<void>;
   updateAuthSettings: (requiresAdditionalAuth: boolean) => Promise<void>;
-}
-
-interface RegisterData {
-  email: string;
-  username: string;
-  password: string;
-  fullName: string;
-}
-
-interface Session {
-  user: User;
-  token: string;
-  refreshToken: string;
-  expiresAt: number;
-  deviceId: string;
-  deviceName: string;
-}
-
-interface TokenPayload {
-  exp: number;
-  sub: string;
-  deviceId: string;
+  refreshSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
+  clearError: () => void;
+  updatePassword: (oldPassword: string, newPassword: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const STORAGE_KEY = 'squadron:session';
-const BIOMETRICS_KEY = 'squadron:biometrics';
-const TOKEN_REFRESH_THRESHOLD = 5 * 60; // 5 minutes in seconds
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const PERSISTENT_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+// Rate limiting utility
+const createRateLimiter = (limit: number, windowMs: number) => {
+  const requests: number[] = [];
+  
+  return () => {
+    const now = Date.now();
+    requests.push(now);
+    
+    // Remove old requests
+    while (requests.length && requests[0] < now - windowMs) {
+      requests.shift();
+    }
+    
+    return requests.length <= limit;
+  };
+};
+
+const loginRateLimiter = createRateLimiter(5, 60000); // 5 requests per minute
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -82,16 +149,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [isBiometricsAvailable, setIsBiometricsAvailable] = useState(false);
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>(AuthStatus.IDLE);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<AuthContextType['sessionInfo']>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Function to get device name
+  const getDeviceName = useCallback(() => {
+    const ua = navigator.userAgent;
+    const browser = ua.match(/(chrome|safari|firefox|opera|edge)/i)?.[1] || 'browser';
+    const os = ua.match(/(mac|win|linux|android|ios)/i)?.[1] || 'unknown';
+    return `${browser} on ${os}`;
+  }, []);
+
+  // Function to fetch active devices
+  const fetchDevices = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await api.get('/auth/devices');
+      setDevices(response.data);
+    } catch (error) {
+      console.error('Failed to fetch devices:', error);
+    }
+  }, [user]);
+
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(BIOMETRICS_KEY);
+      api.defaults.headers.common['Authorization'] = '';
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsBiometricsEnabled(false);
+      navigate('/login');
+      
+      toast({
+        title: 'Success',
+        description: 'Logged out successfully',
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast({
+        variant: "destructive",
+        title: "Logout failed",
+        description: "Failed to logout. Please try again.",
+      });
+    }
+  };
 
   // Check auth status on mount and when token changes
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
+        
+        // Check localStorage first
+        const sessionStr = localStorage.getItem(STORAGE_KEY);
+        if (sessionStr) {
+          try {
+            const session = JSON.parse(sessionStr);
+            if (!session.token || !session.refreshToken || !session.expiresAt) {
+              throw new Error('Invalid session data');
+            }
+
+            // Check if session has expired
+            if (Date.now() > session.expiresAt) {
+              throw new Error('Session expired');
+            }
+
+            api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
+          } catch (e) {
+            // If session data is invalid or expired, clear it
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(BIOMETRICS_KEY);
+            api.defaults.headers.common['Authorization'] = '';
+            setIsBiometricsEnabled(false);
+            throw e; // Re-throw to trigger the catch block below
+          }
+        }
+
         const response = await api.get<User>('/auth/me');
         setUser(response.data);
         setIsAuthenticated(true);
@@ -99,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         setUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem(STORAGE_KEY);
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           navigate('/login');
         }
@@ -108,7 +250,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkAuthStatus();
-  }, [navigate]);
+  }, [navigate, fetchDevices]);
+
+  // Token refresh mechanism
+  useEffect(() => {
+    const checkAndRefreshToken = async () => {
+      const sessionStr = localStorage.getItem(STORAGE_KEY);
+      if (!sessionStr) return;
+
+      const session = JSON.parse(sessionStr);
+      const now = Date.now();
+      const timeUntilExpiry = session.expiresAt - now;
+
+      if (timeUntilExpiry < TOKEN_REFRESH_THRESHOLD * 1000) {
+        try {
+          const response = await api.post('/auth/refresh', {
+            refreshToken: session.refreshToken
+          });
+          
+          const { token, refreshToken } = response.data;
+          const decoded = jwtDecode<TokenPayload>(token);
+          
+          const newSession = {
+            ...session,
+            token,
+            refreshToken,
+            expiresAt: decoded.exp * 1000
+          };
+          
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          // If refresh fails, log out
+          logout();
+        }
+      }
+    };
+
+    const interval = setInterval(checkAndRefreshToken, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [logout]);
 
   // Check if biometrics is available
   useEffect(() => {
@@ -135,41 +316,109 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkBiometrics();
   }, []);
 
-  // Function to get device name
-  const getDeviceName = useCallback(() => {
-    const ua = navigator.userAgent;
-    const browser = ua.match(/(chrome|safari|firefox|opera|edge)/i)?.[1] || 'browser';
-    const os = ua.match(/(mac|win|linux|android|ios)/i)?.[1] || 'unknown';
-    return `${browser} on ${os}`;
-  }, []);
+  // Add activity monitoring
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    let lastActivity = Date.now();
+    
+    const updateLastActivity = () => {
+      lastActivity = Date.now();
+      const sessionStr = localStorage.getItem(STORAGE_KEY);
+      if (sessionStr) {
+        const session: SecureSession = JSON.parse(sessionStr);
+        session.lastActivity = lastActivity;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+        setSessionInfo(prev => prev ? {
+          ...prev,
+          lastActivity: new Date(lastActivity)
+        } : null);
+      }
+    };
 
-  // Function to fetch active devices
-  const fetchDevices = useCallback(async () => {
-    if (!user) return;
-    try {
-      const response = await api.get('/auth/devices');
-      setDevices(response.data);
-    } catch (error) {
-      console.error('Failed to fetch devices:', error);
-    }
-  }, [user]);
+    const checkInactivity = () => {
+      if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
+        logout();
+        toast({
+          title: 'Session Expired',
+          description: 'You have been logged out due to inactivity',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    window.addEventListener('mousemove', updateLastActivity);
+    window.addEventListener('keydown', updateLastActivity);
+    
+    const intervalId = setInterval(checkInactivity, 60000);
+
+    return () => {
+      window.removeEventListener('mousemove', updateLastActivity);
+      window.removeEventListener('keydown', updateLastActivity);
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated]);
 
   const login = async (username: string, password: string, rememberMe = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      // Check rate limiting and lockout
+      if (!loginRateLimiter()) {
+        throw new Error('Too many login attempts. Please try again later.');
+      }
+
+      if (lockoutUntil && Date.now() < lockoutUntil) {
+        const remainingTime = Math.ceil((lockoutUntil - Date.now()) / 1000 / 60);
+        throw new Error(`Account is locked. Please try again in ${remainingTime} minutes.`);
+      }
+
+      setAuthStatus(AuthStatus.LOADING);
+      setIsLoading(true);
       
       const response = await api.post('/auth/login', {
         username,
         password,
         rememberMe,
-        deviceName: navigator.userAgent
+        deviceName: getDeviceName()
       });
 
-      const { user } = response.data;
+      const { user, token, refreshToken, deviceId } = response.data;
+      const decoded = jwtDecode<TokenPayload>(token);
+      
+      // Reset failed attempts on successful login
+      setFailedAttempts(0);
+      setLockoutUntil(null);
+      
+      // Store session data
+      const session: SecureSession = {
+        user,
+        token: securityUtils.encryptToken(token),
+        refreshToken: securityUtils.encryptToken(refreshToken),
+        expiresAt: decoded.exp * 1000,
+        deviceId,
+        deviceName: getDeviceName(),
+        lastActivity: Date.now(),
+        sessionDuration: rememberMe ? PERSISTENT_SESSION_DURATION : SESSION_DURATION
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(user);
       setIsAuthenticated(true);
+      setAuthStatus(AuthStatus.AUTHENTICATED);
+      await fetchDevices();
+      
+      // Update session info
+      setSessionInfo({
+        expiresIn: decoded.exp * 1000 - Date.now(),
+        lastActivity: new Date(),
+        currentDevice: {
+          id: deviceId,
+          name: getDeviceName(),
+          type: 'current',
+          lastUsed: new Date()
+        }
+      });
       
       navigate('/dashboard');
       
@@ -178,16 +427,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: `Welcome back, ${user.fullName}!`,
       });
     } catch (err) {
+      // Handle failed login attempts
+      setFailedAttempts(prev => {
+        const newAttempts = prev + 1;
+        if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+          setLockoutUntil(Date.now() + LOCKOUT_DURATION);
+          toast({
+            variant: "destructive",
+            title: "Account locked",
+            description: `Too many failed attempts. Please try again in ${LOCKOUT_DURATION / 60000} minutes.`,
+          });
+        }
+        return newAttempts;
+      });
+
+      setAuthStatus(AuthStatus.ERROR);
       if (axios.isAxiosError(err)) {
         const errorMessage = err.response?.data?.message || 'Invalid credentials';
-        setError(errorMessage);
+        setAuthError({
+          name: 'LoginError',
+          message: errorMessage,
+          code: 'AUTH_FAILED',
+          details: err
+        });
         toast({
           variant: "destructive",
           title: "Login failed",
           description: errorMessage,
         });
       } else {
-        setError('An unexpected error occurred');
+        setAuthError({
+          name: 'LoginError',
+          message: 'An unexpected error occurred',
+          code: 'NETWORK_ERROR',
+          details: err
+        });
         toast({
           variant: "destructive",
           title: "Login failed",
@@ -195,29 +469,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = async (deviceId?: string) => {
-    try {
-      await api.post('/auth/logout', { deviceId });
-      
-      setUser(null);
-      setIsAuthenticated(false);
-      navigate('/login');
-      
-      toast({
-        title: 'Success',
-        description: 'Logged out successfully',
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-      toast({
-        variant: "destructive",
-        title: "Logout failed",
-        description: "Failed to logout. Please try again.",
-      });
+      setIsLoading(false);
     }
   };
 
@@ -274,7 +526,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = axios.isAxiosError(error) && error.response?.data?.message
         ? error.response.data.message
         : 'Biometric login failed';
-      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -337,7 +588,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = axios.isAxiosError(error) && error.response?.data?.message
         ? error.response.data.message
         : 'Failed to setup biometrics';
-      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -371,9 +621,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutAllDevices = async () => {
     try {
       await api.post('/auth/logout/all');
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(BIOMETRICS_KEY);
+      api.defaults.headers.common['Authorization'] = '';
       setUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem(STORAGE_KEY);
+      setIsBiometricsEnabled(false);
+      navigate('/login');
       
       toast({
         title: 'Success',
@@ -384,7 +638,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? error.response.data.message
         : 'Logout all devices failed';
       console.error('Logout all devices failed:', error);
-      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -394,9 +647,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (userData: { username: string; email: string; password: string; fullName: string }) => {
     try {
-      await api.post('/auth/register', data);
+      await api.post('/auth/register', userData);
 
       toast({
         title: 'Success',
@@ -408,7 +661,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = axios.isAxiosError(error) && error.response?.data?.message
         ? error.response.data.message
         : 'Registration failed';
-      setError(message);
       toast({
         title: 'Error',
         description: message,
@@ -420,17 +672,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      setIsLoading(true);
       const response = await api.get<User>('/auth/me');
       setUser(response.data);
+      setIsAuthenticated(true);
     } catch (error) {
+      setUser(null);
+      setIsAuthenticated(false);
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        setUser(null);
-      } else {
-        console.error('Auth check failed:', error);
-        setUser(null);
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(BIOMETRICS_KEY);
+        api.defaults.headers.common['Authorization'] = '';
+        setIsBiometricsEnabled(false);
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -446,26 +702,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = axios.isAxiosError(error) && error.response?.data?.message
         ? error.response.data.message
         : '2FA enablement failed';
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const verify2FA = async (token: string) => {
-    try {
-      await api.post('/auth/2fa/verify', { token });
-      toast({
-        title: 'Success',
-        description: '2FA verification successful',
-      });
-    } catch (error) {
-      const message = axios.isAxiosError(error) && error.response?.data?.message
-        ? error.response.data.message
-        : '2FA verification failed';
       toast({
         title: 'Error',
         description: message,
@@ -496,47 +732,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const registerBiometrics = async () => {
-    try {
-      await api.post('/auth/biometrics/register');
-      await checkAuth();
-      toast({
-        title: 'Success',
-        description: 'Biometric registration successful',
-      });
-    } catch (error) {
-      const message = axios.isAxiosError(error) && error.response?.data?.message
-        ? error.response.data.message
-        : 'Biometric registration failed';
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const verifyBiometrics = async (credentialId: string, token: string) => {
-    try {
-      await api.post('/auth/biometrics/verify', { credentialId, token });
-      toast({
-        title: 'Success',
-        description: 'Biometric verification successful',
-      });
-    } catch (error) {
-      const message = axios.isAxiosError(error) && error.response?.data?.message
-        ? error.response.data.message
-        : 'Biometric verification failed';
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
   const updateAuthSettings = async (requiresAdditionalAuth: boolean) => {
     try {
       await api.patch('/auth/settings', { requiresAdditionalAuth });
@@ -558,6 +753,248 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const validateSession = async (): Promise<boolean> => {
+    try {
+      const sessionStr = localStorage.getItem(STORAGE_KEY);
+      if (!sessionStr) return false;
+
+      const session: SecureSession = JSON.parse(sessionStr);
+      
+      // Check multiple validation criteria
+      if (
+        !session.token ||
+        !session.refreshToken ||
+        !securityUtils.isTokenValid(session.token) ||
+        Date.now() - session.lastActivity > INACTIVITY_TIMEOUT ||
+        Date.now() >= session.expiresAt
+      ) {
+        await logout();
+        return false;
+      }
+
+      return true;
+    } catch {
+      await logout();
+      return false;
+    }
+  };
+
+  const refreshSession = async (): Promise<void> => {
+    try {
+      setAuthStatus(AuthStatus.LOADING);
+      const sessionStr = localStorage.getItem(STORAGE_KEY);
+      if (!sessionStr) throw new Error('No session found');
+
+      const session: SecureSession = JSON.parse(sessionStr);
+      const response = await api.post('/auth/refresh', {
+        refreshToken: session.refreshToken
+      });
+      
+      const { token, refreshToken } = response.data;
+      const decoded = jwtDecode<TokenPayload>(token);
+      
+      const newSession: SecureSession = {
+        ...session,
+        token,
+        refreshToken,
+        expiresAt: decoded.exp * 1000,
+        lastActivity: Date.now()
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAuthStatus(AuthStatus.AUTHENTICATED);
+      
+      // Update session info
+      setSessionInfo({
+        expiresIn: decoded.exp * 1000 - Date.now(),
+        lastActivity: new Date(newSession.lastActivity),
+        currentDevice: devices.find(d => d.id === decoded.deviceId) || {
+          id: decoded.deviceId,
+          name: newSession.deviceName,
+          type: 'unknown',
+          lastUsed: new Date()
+        }
+      });
+    } catch (error) {
+      setAuthStatus(AuthStatus.ERROR);
+      setAuthError({
+        name: 'RefreshError',
+        message: 'Failed to refresh session',
+        code: 'TOKEN_EXPIRED',
+        details: error
+      });
+      await logout();
+    }
+  };
+
+  const clearError = () => {
+    setAuthError(null);
+    setAuthStatus(AuthStatus.IDLE);
+  };
+
+  const updatePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      setAuthStatus(AuthStatus.LOADING);
+      await api.post('/auth/password/change', {
+        oldPassword,
+        newPassword
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Password updated successfully',
+      });
+      
+      setAuthStatus(AuthStatus.AUTHENTICATED);
+    } catch (error) {
+      setAuthStatus(AuthStatus.ERROR);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Failed to update password';
+      
+      setAuthError({
+        name: 'PasswordUpdateError',
+        message,
+        code: 'AUTH_FAILED',
+        details: error
+      });
+      
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    try {
+      setAuthStatus(AuthStatus.LOADING);
+      await api.post('/auth/password/reset-request', { email });
+      
+      toast({
+        title: 'Success',
+        description: 'Password reset instructions have been sent to your email',
+      });
+      
+      setAuthStatus(AuthStatus.IDLE);
+    } catch (error) {
+      setAuthStatus(AuthStatus.ERROR);
+      const message = axios.isAxiosError(error) && error.response?.data?.message
+        ? error.response.data.message
+        : 'Failed to request password reset';
+      
+      setAuthError({
+        name: 'PasswordResetRequestError',
+        message,
+        code: 'AUTH_FAILED',
+        details: error
+      });
+      
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    try {
+      setAuthStatus(AuthStatus.LOADING);
+      
+      // Validate inputs
+      if (!token || !newPassword) {
+        throw new Error('Token and new password are required');
+      }
+
+      // For now, we'll store these in localStorage and navigate to reset page
+      // In the future, this will be an API call to verify the token and reset the password
+      const resetData = { token, newPassword, timestamp: Date.now() };
+      localStorage.setItem('reset:data', JSON.stringify(resetData));
+      
+      navigate('/reset-password');
+      
+      toast({
+        title: 'Info',
+        description: 'Please enter your username to reset your password.',
+      });
+      
+      setAuthStatus(AuthStatus.UNAUTHENTICATED);
+    } catch (error) {
+      setAuthStatus(AuthStatus.ERROR);
+      const message = 'Failed to process password reset';
+      
+      setAuthError({
+        name: 'PasswordResetError',
+        message,
+        code: 'AUTH_FAILED',
+        details: error
+      });
+      
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      // Clean up stored reset data after 5 minutes
+      setTimeout(() => {
+        localStorage.removeItem('reset:data');
+      }, 5 * 60 * 1000);
+    }
+  };
+
+  // Add request interceptors
+  useEffect(() => {
+    const requestInterceptor = api.interceptors.request.use(
+      async (config) => {
+        if (await validateSession()) {
+          const sessionStr = localStorage.getItem(STORAGE_KEY);
+          if (sessionStr) {
+            const session: SecureSession = JSON.parse(sessionStr);
+            const token = securityUtils.decryptToken(session.token);
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    const responseInterceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && error.config && !error.config._retry) {
+          error.config._retry = true;
+          try {
+            await refreshSession();
+            const sessionStr = localStorage.getItem(STORAGE_KEY);
+            if (sessionStr) {
+              const session: SecureSession = JSON.parse(sessionStr);
+              const token = securityUtils.decryptToken(session.token);
+              error.config.headers.Authorization = `Bearer ${token}`;
+            }
+            return api(error.config);
+          } catch (refreshError) {
+            await logout();
+            throw refreshError;
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      api.interceptors.request.eject(requestInterceptor);
+      api.interceptors.response.eject(responseInterceptor);
+    };
+  }, [validateSession, refreshSession, logout]);
+
   return (
     <AuthContext.Provider 
       value={{ 
@@ -567,6 +1004,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         devices,
         isBiometricsAvailable,
         isBiometricsEnabled,
+        authStatus,
+        authError,
+        isLocked: !!lockoutUntil && Date.now() < lockoutUntil,
+        remainingAttempts: Math.max(0, MAX_FAILED_ATTEMPTS - failedAttempts),
+        sessionInfo,
         login,
         loginWithBiometrics,
         register,
@@ -574,15 +1016,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logoutAllDevices,
         setupBiometrics,
         disableBiometrics,
-        loading,
-        error,
-        checkAuth,
         enable2FA,
-        verify2FA,
         disable2FA,
-        registerBiometrics,
-        verifyBiometrics,
-        updateAuthSettings
+        updateAuthSettings,
+        refreshSession,
+        validateSession,
+        clearError,
+        updatePassword,
+        requestPasswordReset,
+        resetPassword
       }}
     >
       {!isLoading ? children : <div>Loading...</div>}

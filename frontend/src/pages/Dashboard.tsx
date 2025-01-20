@@ -18,19 +18,6 @@ interface Stats {
   };
 }
 
-// Mock data for the chart - replace with real data in production
-const trafficData = [
-  { time: "00:00", value: 2400 },
-  { time: "03:00", value: 2800 },
-  { time: "06:00", value: 3200 },
-  { time: "09:00", value: 2800 },
-  { time: "12:00", value: 2400 },
-  { time: "15:00", value: 2800 },
-  { time: "18:00", value: 3600 },
-  { time: "21:00", value: 3200 },
-  { time: "24:00", value: 3000 },
-];
-
 function MetricCard({ 
   title, 
   value, 
@@ -183,11 +170,10 @@ export function Dashboard() {
       storage: 0
     }
   });
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
   const [historicalData, setHistoricalData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Debounced fetch function
   const debouncedFetch = useCallback(
