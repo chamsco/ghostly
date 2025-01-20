@@ -414,7 +414,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       setAuthStatus(AuthStatus.AUTHENTICATED);
-      await fetchDevices();
       
       // Update session info
       setSessionInfo({
@@ -427,11 +426,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastUsed: new Date()
         }
       });
+
+      // Fetch devices after successful login
+      await fetchDevices();
       
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.fullName}!`,
       });
+
+      // Navigate to dashboard after everything is set up
+      navigate('/dashboard');
     } catch (err) {
       // Handle failed login attempts
       setFailedAttempts(prev => {
@@ -968,21 +973,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add request interceptors
+  // Update request interceptors
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
       async (config) => {
-        // Skip validation for auth endpoints to prevent loops
+        // Skip validation for auth endpoints except /auth/me
         if (config.url?.includes('/auth/') && !config.url.includes('/auth/me')) {
+          const sessionStr = localStorage.getItem(STORAGE_KEY);
+          if (sessionStr) {
+            const session: SecureSession = JSON.parse(sessionStr);
+            const token = securityUtils.decryptToken(session.token);
+            config.headers.Authorization = `Bearer ${token}`;
+          }
           return config;
         }
 
-        const sessionStr = localStorage.getItem(STORAGE_KEY);
-        if (sessionStr) {
-          const session: SecureSession = JSON.parse(sessionStr);
-          const token = securityUtils.decryptToken(session.token);
-          config.headers.Authorization = `Bearer ${token}`;
+        // For all other requests, validate session
+        const isValid = await validateSession();
+        if (!isValid && !config.url?.includes('/login')) {
+          navigate('/login');
+          throw new Error('Session invalid');
         }
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -1018,7 +1030,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       api.interceptors.request.eject(requestInterceptor);
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, [refreshSession, logout]);
+  }, [refreshSession, logout, navigate]);
 
   return (
     <AuthContext.Provider 
