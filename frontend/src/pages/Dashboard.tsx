@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
-import { Activity, Server, Cpu, HelpCircle } from 'lucide-react';
+import { Activity, Server, Cpu, HelpCircle, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { metricsService, SystemMetrics } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 interface Stats {
   totalProjects: number;
@@ -16,6 +18,13 @@ interface Stats {
     memory: number;
     storage: number;
   };
+}
+
+interface EndpointState {
+  data: any;
+  isLoading: boolean;
+  error: string | null;
+  retryCount: number;
 }
 
 function MetricCard({ 
@@ -159,62 +168,135 @@ function debounce<T extends (...args: any[]) => any>(
   };
 }
 
+function ErrorAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Alert variant="destructive" className="mb-4">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription className="flex items-center justify-between">
+        <span>{message}</span>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <Card className="p-6 card-gradient animate-pulse">
+      <div className="h-20 bg-muted/20 rounded"></div>
+    </Card>
+  );
+}
+
 export function Dashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<Stats>({
-    totalProjects: 0,
-    activeDeployments: 0,
-    resourceUsage: {
-      cpu: 0,
-      memory: 0,
-      storage: 0
-    }
+  const [dashboardStats, setDashboardStats] = useState<EndpointState>({
+    data: null,
+    isLoading: true,
+    error: null,
+    retryCount: 0
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-  const [historicalData, setHistoricalData] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [systemMetrics, setSystemMetrics] = useState<EndpointState>({
+    data: null,
+    isLoading: true,
+    error: null,
+    retryCount: 0
+  });
+  const [historicalMetrics, setHistoricalMetrics] = useState<EndpointState>({
+    data: null,
+    isLoading: true,
+    error: null,
+    retryCount: 0
+  });
 
-  // Debounced fetch function
-  const debouncedFetch = useCallback(
-    debounce(async () => {
-      try {
-        const [statsResponse, currentMetrics, historical] = await Promise.all([
-          api.get('/dashboard/stats'),
-          metricsService.getSystemMetrics(),
-          metricsService.getHistoricalMetrics()
-        ]);
-        
-        setStats(statsResponse.data);
-        setMetrics(currentMetrics);
-        setHistoricalData(historical.dataPoints);
-        setError(null);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-        setError('Failed to load dashboard data');
-      } finally {
-        setIsLoading(false);
+  const fetchWithRetry = async (
+    fetcher: () => Promise<any>,
+    setter: React.Dispatch<React.SetStateAction<EndpointState>>,
+    currentState: EndpointState
+  ) => {
+    try {
+      const data = await fetcher();
+      setter({
+        data,
+        isLoading: false,
+        error: null,
+        retryCount: 0
+      });
+    } catch (error) {
+      const nextRetryCount = currentState.retryCount + 1;
+      const backoffDelay = Math.min(1000 * Math.pow(2, nextRetryCount), 30000);
+      
+      console.error('Failed to fetch data:', error);
+      setter({
+        data: null,
+        isLoading: false,
+        error: 'Failed to load data',
+        retryCount: nextRetryCount
+      });
+
+      // Retry with exponential backoff
+      if (nextRetryCount <= 5) {
+        setTimeout(() => {
+          setter((prev: EndpointState) => ({ ...prev, isLoading: true }));
+          fetchWithRetry(fetcher, setter, { ...currentState, retryCount: nextRetryCount });
+        }, backoffDelay);
       }
-    }, 1000),
-    []
-  );
+    }
+  };
+
+  const fetchDashboardStats = useCallback(() => {
+    return fetchWithRetry(
+      async () => {
+        const response = await api.get('/dashboard/stats');
+        return response.data;
+      },
+      setDashboardStats,
+      dashboardStats
+    );
+  }, [dashboardStats]);
+
+  const fetchSystemMetrics = useCallback(() => {
+    return fetchWithRetry(
+      async () => {
+        return await metricsService.getSystemMetrics();
+      },
+      setSystemMetrics,
+      systemMetrics
+    );
+  }, [systemMetrics]);
+
+  const fetchHistoricalMetrics = useCallback(() => {
+    return fetchWithRetry(
+      async () => {
+        const response = await metricsService.getHistoricalMetrics();
+        return response;
+      },
+      setHistoricalMetrics,
+      historicalMetrics
+    );
+  }, [historicalMetrics]);
 
   useEffect(() => {
-    debouncedFetch();
-    // Set up polling every minute instead of every 30 seconds
-    const interval = setInterval(debouncedFetch, 60000);
-    return () => {
-      clearInterval(interval);
-    };
-  }, [debouncedFetch]);
+    fetchDashboardStats();
+    fetchSystemMetrics();
+    fetchHistoricalMetrics();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+    const interval = setInterval(() => {
+      if (!dashboardStats.error) fetchDashboardStats();
+      if (!systemMetrics.error) fetchSystemMetrics();
+      if (!historicalMetrics.error) fetchHistoricalMetrics();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [fetchDashboardStats, fetchSystemMetrics, fetchHistoricalMetrics]);
+
+  const stats: Stats = dashboardStats.data || {
+    totalProjects: 0,
+    activeDeployments: 0,
+    resourceUsage: { cpu: 0, memory: 0, storage: 0 }
+  };
 
   return (
     <TooltipProvider>
@@ -225,94 +307,142 @@ export function Dashboard() {
           </h2>
         </div>
 
-        {error && (
-          <div className="bg-destructive/15 text-destructive px-4 py-2 rounded-md">
-            {error}
-          </div>
+        {/* Dashboard Stats Section */}
+        {dashboardStats.error && (
+          <ErrorAlert 
+            message="Failed to load dashboard statistics" 
+            onRetry={fetchDashboardStats} 
+          />
         )}
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <MetricCard
-            title="Total Projects"
-            value={stats.totalProjects}
-            icon={<Activity className="h-4 w-4" />}
-            description="Total number of projects in your account"
-            trend={{ value: 12, isPositive: true }}
-          />
-
-          <MetricCard
-            title="Active Deployments"
-            value={stats.activeDeployments}
-            icon={<Server className="h-4 w-4" />}
-            description="Currently running deployments"
-            trend={{ value: 5, isPositive: true }}
-          />
-
-          <MetricCard
-            title="Resource Usage"
-            value={`${stats.resourceUsage?.cpu ?? 0}%`}
-            icon={<Cpu className="h-4 w-4" />}
-            description="Current CPU utilization across all projects"
-          />
+          {dashboardStats.isLoading ? (
+            <>
+              <LoadingCard />
+              <LoadingCard />
+              <LoadingCard />
+            </>
+          ) : (
+            <>
+              <MetricCard
+                title="Total Projects"
+                value={stats.totalProjects}
+                icon={<Activity className="h-4 w-4" />}
+                description="Total number of projects in your account"
+              />
+              <MetricCard
+                title="Active Deployments"
+                value={stats.activeDeployments}
+                icon={<Server className="h-4 w-4" />}
+                description="Currently running deployments"
+              />
+              <MetricCard
+                title="Resource Usage"
+                value={`${stats.resourceUsage?.cpu ?? 0}%`}
+                icon={<Cpu className="h-4 w-4" />}
+                description="Current CPU utilization across all projects"
+              />
+            </>
+          )}
         </div>
 
+        {/* Metrics Section */}
         <div className="grid gap-4 md:grid-cols-2">
-          <SystemTrafficChart data={historicalData} />
-          
-          <Card className="p-6 card-gradient">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Resource Allocation</h3>
+          {/* Historical Metrics Chart */}
+          {historicalMetrics.error ? (
+            <ErrorAlert 
+              message="Failed to load historical metrics" 
+              onRetry={fetchHistoricalMetrics}
+            />
+          ) : historicalMetrics.isLoading ? (
+            <Card className="p-6 card-gradient animate-pulse">
+              <div className="h-[300px] bg-muted/20 rounded"></div>
+            </Card>
+          ) : (
+            <SystemTrafficChart data={historicalMetrics.data?.dataPoints || []} />
+          )}
+
+          {/* Current Metrics */}
+          {systemMetrics.error ? (
+            <ErrorAlert 
+              message="Failed to load system metrics" 
+              onRetry={fetchSystemMetrics}
+            />
+          ) : systemMetrics.isLoading ? (
+            <Card className="p-6 card-gradient animate-pulse">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">CPU Usage</span>
-                    <span className="font-medium">{metrics?.cpu.usage.toFixed(1) ?? 0}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${metrics?.cpu.usage ?? 0}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {metrics?.cpu.cores} Cores @ {metrics?.cpu.speed}MHz
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Memory Usage</span>
-                    <span className="font-medium">{metrics?.memory.usagePercentage.toFixed(1) ?? 0}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${metrics?.memory.usagePercentage ?? 0}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatBytes(metrics?.memory.used || 0)} / {formatBytes(metrics?.memory.total || 0)}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Storage Usage</span>
-                    <span className="font-medium">{metrics?.disk?.usagePercentage.toFixed(1) ?? 0}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${metrics?.disk?.usagePercentage ?? 0}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatBytes(metrics?.disk?.used || 0)} / {formatBytes(metrics?.disk?.total || 0)}
-                  </p>
+                <div className="h-6 bg-muted/20 rounded w-1/3"></div>
+                <div className="space-y-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 bg-muted/20 rounded w-full"></div>
+                      <div className="h-2 bg-muted/20 rounded w-full"></div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          ) : (
+            <Card className="p-6 card-gradient">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Resource Allocation</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">CPU Usage</span>
+                      <span className="font-medium">
+                        {systemMetrics.data?.cpu.usage.toFixed(1) ?? 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500" 
+                        style={{ width: `${systemMetrics.data?.cpu.usage ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemMetrics.data?.cpu.cores} Cores @ {systemMetrics.data?.cpu.speed}MHz
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Memory Usage</span>
+                      <span className="font-medium">
+                        {systemMetrics.data?.memory.usagePercentage.toFixed(1) ?? 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500" 
+                        style={{ width: `${systemMetrics.data?.memory.usagePercentage ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatBytes(systemMetrics.data?.memory.used || 0)} / {formatBytes(systemMetrics.data?.memory.total || 0)}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Storage Usage</span>
+                      <span className="font-medium">
+                        {systemMetrics.data?.disk?.usagePercentage.toFixed(1) ?? 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500" 
+                        style={{ width: `${systemMetrics.data?.disk?.usagePercentage ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatBytes(systemMetrics.data?.disk?.used || 0)} / {formatBytes(systemMetrics.data?.disk?.total || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </TooltipProvider>
