@@ -171,24 +171,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Function to fetch active devices
   const fetchDevices = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return;
+    
+    // Add a flag to prevent duplicate requests
+    const requestKey = `devices-${user.id}`;
+    if ((window as any)[requestKey]) return;
+    (window as any)[requestKey] = true;
+
     try {
       const response = await api.get('/auth/devices');
       setDevices(response.data);
     } catch (error) {
       console.error('Failed to fetch devices:', error);
+    } finally {
+      setTimeout(() => {
+        delete (window as any)[requestKey];
+      }, 1000); // Clear flag after 1 second
     }
-  }, [user]);
+  }, [user?.id]);
 
-  const logout = async () => {
+  // Memoized logout function
+  const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
+      
+      // Batch state updates
+      const updates = {
+        user: null,
+        isAuthenticated: false,
+        isBiometricsEnabled: false
+      };
+      
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(BIOMETRICS_KEY);
       api.defaults.headers.common['Authorization'] = '';
-      setUser(null);
-      setIsAuthenticated(false);
-      setIsBiometricsEnabled(false);
+      
+      setUser(updates.user);
+      setIsAuthenticated(updates.isAuthenticated);
+      setIsBiometricsEnabled(updates.isBiometricsEnabled);
+      
       navigate('/login');
       
       toast({
@@ -203,161 +224,123 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Failed to logout. Please try again.",
       });
     }
-  };
+  }, [navigate, toast]);
 
-  // Check auth status on mount and when token changes
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        setIsLoading(true);
-        setAuthStatus(AuthStatus.LOADING);
-        
-        // Check localStorage first
-        const sessionStr = localStorage.getItem(STORAGE_KEY);
-        if (!sessionStr) {
-          setUser(null);
-          setIsAuthenticated(false);
-          setAuthStatus(AuthStatus.UNAUTHENTICATED);
-          return;
-        }
-
-        try {
-          const session = JSON.parse(sessionStr);
-          if (!session.token || !session.refreshToken || !session.expiresAt) {
-            throw new Error('Invalid session data');
-          }
-
-          // Check if session has expired
-          if (Date.now() > session.expiresAt) {
-            throw new Error('Session expired');
-          }
-
-          api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
-        } catch (e) {
-          // If session data is invalid or expired, clear it
-          localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem(BIOMETRICS_KEY);
-          api.defaults.headers.common['Authorization'] = '';
-          setIsBiometricsEnabled(false);
-          setUser(null);
-          setIsAuthenticated(false);
-          setAuthStatus(AuthStatus.UNAUTHENTICATED);
-          return;
-        }
-
-        const response = await api.get<User>('/auth/me');
-        setUser(response.data);
-        setIsAuthenticated(true);
-        setAuthStatus(AuthStatus.AUTHENTICATED);
-        await fetchDevices();
-      } catch (error) {
-        setUser(null);
-        setIsAuthenticated(false);
-        setAuthStatus(AuthStatus.UNAUTHENTICATED);
-        localStorage.removeItem(STORAGE_KEY);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, [navigate, fetchDevices]);
-
-  // Token refresh mechanism
-  useEffect(() => {
-    const checkAndRefreshToken = async () => {
+  // Define refreshSession
+  const refreshSession = useCallback(async (): Promise<void> => {
+    try {
+      setAuthStatus(AuthStatus.LOADING);
       const sessionStr = localStorage.getItem(STORAGE_KEY);
-      if (!sessionStr) return;
+      if (!sessionStr) throw new Error('No session found');
 
-      const session = JSON.parse(sessionStr);
-      const now = Date.now();
-      const timeUntilExpiry = session.expiresAt - now;
-
-      if (timeUntilExpiry < TOKEN_REFRESH_THRESHOLD * 1000) {
-        try {
-          const response = await api.post('/auth/refresh', {
-            refreshToken: session.refreshToken
-          });
-          
-          const { token, refreshToken } = response.data;
-          const decoded = jwtDecode<TokenPayload>(token);
-          
-          const newSession = {
-            ...session,
-            token,
-            refreshToken,
-            expiresAt: decoded.exp * 1000
-          };
-          
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        } catch (error) {
-          // If refresh fails, log out
-          logout();
+      const session: SecureSession = JSON.parse(sessionStr);
+      const response = await api.post('/auth/refresh', {
+        refreshToken: session.refreshToken
+      });
+      
+      const { token, refreshToken } = response.data;
+      const decoded = jwtDecode<TokenPayload>(token);
+      
+      const newSession: SecureSession = {
+        ...session,
+        token,
+        refreshToken,
+        expiresAt: decoded.exp * 1000,
+        lastActivity: Date.now()
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Batch state updates
+      const updates = {
+        authStatus: AuthStatus.AUTHENTICATED,
+        sessionInfo: {
+          expiresIn: decoded.exp * 1000 - Date.now(),
+          lastActivity: new Date(newSession.lastActivity),
+          currentDevice: devices.find(d => d.id === decoded.deviceId) || {
+            id: decoded.deviceId,
+            name: newSession.deviceName,
+            type: 'unknown',
+            lastUsed: new Date()
+          }
         }
-      }
-    };
+      };
+      
+      setAuthStatus(updates.authStatus);
+      setSessionInfo(updates.sessionInfo);
+    } catch (error) {
+      // Batch error state updates
+      const updates = {
+        authStatus: AuthStatus.ERROR,
+        authError: {
+          name: 'RefreshError',
+          message: 'Failed to refresh session',
+          code: 'TOKEN_EXPIRED' as const,
+          details: error
+        }
+      };
+      
+      setAuthStatus(updates.authStatus);
+      setAuthError(updates.authError);
+      await logout();
+    }
+  }, [devices, logout]);
 
-    const interval = setInterval(checkAndRefreshToken, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, [logout]);
+  // Token refresh mechanism with useCallback
+  const checkAndRefreshToken = useCallback(async () => {
+    const sessionStr = localStorage.getItem(STORAGE_KEY);
+    if (!sessionStr) return;
 
-  // Check if biometrics is available
+    const session = JSON.parse(sessionStr);
+    const now = Date.now();
+    const timeUntilExpiry = session.expiresAt - now;
+
+    if (timeUntilExpiry < TOKEN_REFRESH_THRESHOLD * 1000) {
+      await refreshSession();
+    }
+  }, [refreshSession]);
+
+  // Optimize token refresh interval
   useEffect(() => {
-    const checkBiometrics = async () => {
-      try {
-        if (typeof window !== 'undefined' && 
-            'credentials' in navigator && 
-            'PublicKeyCredential' in window &&
-            typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
-          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-          setIsBiometricsAvailable(available);
-          const biometricsEnabled = localStorage.getItem(BIOMETRICS_KEY);
-          setIsBiometricsEnabled(!!biometricsEnabled);
-        } else {
-          setIsBiometricsAvailable(false);
-          setIsBiometricsEnabled(false);
-        }
-      } catch (error) {
-        console.error('Biometrics check failed:', error);
-        setIsBiometricsAvailable(false);
-        setIsBiometricsEnabled(false);
-      }
-    };
-    checkBiometrics();
+    const interval = setInterval(checkAndRefreshToken, 60000);
+    return () => clearInterval(interval);
+  }, [checkAndRefreshToken]);
+
+  // Optimize activity monitoring
+  const updateLastActivity = useCallback(() => {
+    const now = Date.now();
+    const sessionStr = localStorage.getItem(STORAGE_KEY);
+    if (sessionStr) {
+      const session: SecureSession = JSON.parse(sessionStr);
+      session.lastActivity = now;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      setSessionInfo(prev => prev ? {
+        ...prev,
+        lastActivity: new Date(now)
+      } : null);
+    }
   }, []);
 
-  // Add activity monitoring
+  const checkInactivity = useCallback(() => {
+    const sessionStr = localStorage.getItem(STORAGE_KEY);
+    if (!sessionStr) return;
+    
+    const session: SecureSession = JSON.parse(sessionStr);
+    if (Date.now() - session.lastActivity > INACTIVITY_TIMEOUT) {
+      logout();
+      toast({
+        title: 'Session Expired',
+        description: 'You have been logged out due to inactivity',
+        variant: 'destructive'
+      });
+    }
+  }, [logout, toast]);
+
+  // Activity monitoring effect
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    let lastActivity = Date.now();
-    
-    const updateLastActivity = () => {
-      lastActivity = Date.now();
-      const sessionStr = localStorage.getItem(STORAGE_KEY);
-      if (sessionStr) {
-        const session: SecureSession = JSON.parse(sessionStr);
-        session.lastActivity = lastActivity;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-        setSessionInfo(prev => prev ? {
-          ...prev,
-          lastActivity: new Date(lastActivity)
-        } : null);
-      }
-    };
-
-    const checkInactivity = () => {
-      if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
-        logout();
-        toast({
-          title: 'Session Expired',
-          description: 'You have been logged out due to inactivity',
-          variant: 'destructive'
-        });
-      }
-    };
-
     window.addEventListener('mousemove', updateLastActivity);
     window.addEventListener('keydown', updateLastActivity);
     
@@ -368,7 +351,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keydown', updateLastActivity);
       clearInterval(intervalId);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, updateLastActivity, checkInactivity]);
+
+  // Check auth status on mount and when token changes
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        setIsLoading(true);
+        setAuthStatus(AuthStatus.LOADING);
+        
+        const sessionStr = localStorage.getItem(STORAGE_KEY);
+        if (!sessionStr) {
+          // Batch state updates for no session
+          const updates = {
+            user: null,
+            isAuthenticated: false,
+            authStatus: AuthStatus.UNAUTHENTICATED
+          };
+          
+          setUser(updates.user);
+          setIsAuthenticated(updates.isAuthenticated);
+          setAuthStatus(updates.authStatus);
+          return;
+        }
+
+        try {
+          const session = JSON.parse(sessionStr);
+          if (!session.token || !session.refreshToken || !session.expiresAt) {
+            throw new Error('Invalid session data');
+          }
+
+          if (Date.now() > session.expiresAt) {
+            throw new Error('Session expired');
+          }
+
+          api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
+        } catch (e) {
+          // Batch state updates for invalid session
+          const updates = {
+            user: null,
+            isAuthenticated: false,
+            isBiometricsEnabled: false,
+            authStatus: AuthStatus.UNAUTHENTICATED
+          };
+          
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(BIOMETRICS_KEY);
+          api.defaults.headers.common['Authorization'] = '';
+          
+          setUser(updates.user);
+          setIsAuthenticated(updates.isAuthenticated);
+          setIsBiometricsEnabled(updates.isBiometricsEnabled);
+          setAuthStatus(updates.authStatus);
+          return;
+        }
+
+        const response = await api.get<User>('/auth/me');
+        
+        // Batch state updates for successful auth
+        const updates = {
+          user: response.data,
+          isAuthenticated: true,
+          authStatus: AuthStatus.AUTHENTICATED
+        };
+        
+        setUser(updates.user);
+        setIsAuthenticated(updates.isAuthenticated);
+        setAuthStatus(updates.authStatus);
+      } catch (error) {
+        // Batch state updates for error
+        const updates = {
+          user: null,
+          isAuthenticated: false,
+          authStatus: AuthStatus.UNAUTHENTICATED
+        };
+        
+        setUser(updates.user);
+        setIsAuthenticated(updates.isAuthenticated);
+        setAuthStatus(updates.authStatus);
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  // Separate effect for fetching devices when auth status changes
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      fetchDevices();
+    }
+  }, [isAuthenticated, user?.id, fetchDevices]);
 
   const login = async (username: string, password: string, rememberMe = false) => {
     try {
@@ -865,55 +940,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthStatus(AuthStatus.UNAUTHENTICATED);
       }
       return false;
-    }
-  };
-
-  const refreshSession = async (): Promise<void> => {
-    try {
-      setAuthStatus(AuthStatus.LOADING);
-      const sessionStr = localStorage.getItem(STORAGE_KEY);
-      if (!sessionStr) throw new Error('No session found');
-
-      const session: SecureSession = JSON.parse(sessionStr);
-      const response = await api.post('/auth/refresh', {
-        refreshToken: session.refreshToken
-      });
-      
-      const { token, refreshToken } = response.data;
-      const decoded = jwtDecode<TokenPayload>(token);
-      
-      const newSession: SecureSession = {
-        ...session,
-        token,
-        refreshToken,
-        expiresAt: decoded.exp * 1000,
-        lastActivity: Date.now()
-      };
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setAuthStatus(AuthStatus.AUTHENTICATED);
-      
-      // Update session info
-      setSessionInfo({
-        expiresIn: decoded.exp * 1000 - Date.now(),
-        lastActivity: new Date(newSession.lastActivity),
-        currentDevice: devices.find(d => d.id === decoded.deviceId) || {
-          id: decoded.deviceId,
-          name: newSession.deviceName,
-          type: 'unknown',
-          lastUsed: new Date()
-        }
-      });
-    } catch (error) {
-      setAuthStatus(AuthStatus.ERROR);
-      setAuthError({
-        name: 'RefreshError',
-        message: 'Failed to refresh session',
-        code: 'TOKEN_EXPIRED',
-        details: error
-      });
-      await logout();
     }
   };
 
