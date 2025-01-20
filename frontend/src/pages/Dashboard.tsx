@@ -7,7 +7,6 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { metricsService, SystemMetrics } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
-import { Progress } from '@/components/ui/progress';
 
 interface Stats {
   totalProjects: number;
