@@ -382,6 +382,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthStatus(AuthStatus.LOADING);
       setIsLoading(true);
       
+      console.log('🔄 Attempting login for user:', username);
+      
       const response = await api.post('/auth/login', {
         username,
         password,
@@ -389,8 +391,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         deviceName: getDeviceName()
       });
 
-      const { user, token, refreshToken, deviceId } = response.data;
+      console.log('✅ Login response received:', {
+        status: response.status,
+        hasToken: !!response.data.access_token,
+        hasRefreshToken: !!response.data.refreshToken,
+        hasUser: !!response.data.user
+      });
+
+      const { user, access_token: token, refreshToken, deviceId } = response.data;
       const decoded = jwtDecode<TokenPayload>(token);
+      
+      console.log('🔑 Decoded token:', {
+        exp: new Date(decoded.exp * 1000),
+        sub: decoded.sub,
+        isAdmin: user.isAdmin
+      });
       
       // Reset failed attempts on successful login
       setFailedAttempts(0);
@@ -407,6 +422,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastActivity: Date.now(),
         sessionDuration: rememberMe ? PERSISTENT_SESSION_DURATION : SESSION_DURATION
       };
+      
+      console.log('💾 Storing session data:', {
+        expiresAt: new Date(session.expiresAt),
+        deviceId: session.deviceId,
+        username: session.user.username
+      });
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -427,7 +448,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      // Fetch devices after successful login
+      console.log('🔄 Fetching devices...');
       await fetchDevices();
       
       toast({
@@ -435,9 +456,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: `Welcome back, ${user.fullName}!`,
       });
 
-      // Navigate to dashboard after everything is set up
+      console.log('🚀 Navigating to dashboard...');
       navigate('/dashboard');
     } catch (err) {
+      console.error('❌ Login error:', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        status: axios.isAxiosError(err) ? err.response?.status : undefined,
+        data: axios.isAxiosError(err) ? err.response?.data : undefined
+      });
+
       // Handle failed login attempts
       setFailedAttempts(prev => {
         const newAttempts = prev + 1;
