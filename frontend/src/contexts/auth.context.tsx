@@ -142,6 +142,9 @@ const createRateLimiter = (limit: number, windowMs: number) => {
 
 const loginRateLimiter = createRateLimiter(5, 60000); // 5 requests per minute
 
+// Add route validation cache
+const validatedRoutes = new Set<string>();
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1048,18 +1051,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Skip validation for auth endpoints and public routes
         if (
-          config.url?.includes('/auth/') || 
-          config.url?.includes('/login') ||
-          config.url?.includes('/register') ||
-          config.url?.includes('/password/reset')
+          config.url?.includes('/auth/login') ||
+          config.url?.includes('/auth/register') ||
+          config.url?.includes('/auth/password/reset')
         ) {
-          // Still attach token if available
+          return config;
+        }
+
+        // For auth/me endpoint, only attach token if available
+        if (config.url?.includes('/auth/me')) {
           const sessionStr = localStorage.getItem(STORAGE_KEY);
           if (sessionStr) {
             const session: SecureSession = JSON.parse(sessionStr);
             const token = securityUtils.decryptToken(session.token);
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('🔑 Attached token to auth endpoint request');
           }
           return config;
         }
@@ -1079,8 +1084,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = securityUtils.decryptToken(session.token);
         config.headers.Authorization = `Bearer ${token}`;
 
+        // Skip validation if route was recently validated
+        const routeKey = `${config.method}-${config.url}`;
+        if (validatedRoutes.has(routeKey)) {
+          console.log('✅ Using cached validation for route:', routeKey);
+          return config;
+        }
+
         // Skip validation if we're already authenticated and session is not near expiry
         if (isAuthenticated && Date.now() < session.expiresAt - 5 * 60 * 1000) {
+          validatedRoutes.add(routeKey);
           console.log('✅ Using cached auth state for request');
           return config;
         }
@@ -1089,7 +1102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!config.url?.includes('/auth/')) {
           console.log('🔍 Validating session before request...');
           const isValid = await validateSession();
-          if (!isValid && !window.location.pathname.includes('/login')) {
+          if (isValid) {
+            validatedRoutes.add(routeKey);
+          } else if (!window.location.pathname.includes('/login')) {
             console.log('❌ Session invalid, redirecting to login');
             navigate('/login', { state: { from: window.location.pathname } });
             throw new Error('Session invalid');
@@ -1104,51 +1119,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    const responseInterceptor = api.interceptors.response.use(
-      (response) => {
-        console.log('✅ Response interceptor:', {
-          url: response.config.url,
-          status: response.status,
-          data: response.data
-        });
-        return response;
-      },
-      async (error) => {
-        console.error('❌ Response interceptor error:', {
-          url: error.config?.url,
-          status: error.response?.status,
-          data: error.response?.data
-        });
-
-        if (error.response?.status === 401 && error.config && !error.config._retry) {
-          error.config._retry = true;
-          try {
-            console.log('🔄 Attempting to refresh session...');
-            await refreshSession();
-            const sessionStr = localStorage.getItem(STORAGE_KEY);
-            if (sessionStr) {
-              const session: SecureSession = JSON.parse(sessionStr);
-              const token = securityUtils.decryptToken(session.token);
-              error.config.headers.Authorization = `Bearer ${token}`;
-              console.log('🔑 Retrying request with new token');
-              return api(error.config);
-            }
-          } catch (refreshError) {
-            console.error('❌ Session refresh failed:', refreshError);
-            // Only logout if we're not already on the login page
-            if (!window.location.pathname.includes('/login')) {
-              await logout();
-            }
-            throw refreshError;
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
+    // Clear validation cache every minute
+    const clearCacheInterval = setInterval(() => {
+      validatedRoutes.clear();
+    }, 60000);
 
     return () => {
       api.interceptors.request.eject(requestInterceptor);
-      api.interceptors.response.eject(responseInterceptor);
+      clearInterval(clearCacheInterval);
     };
   }, [refreshSession, logout, navigate, isAuthenticated]);
 
