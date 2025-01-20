@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth.context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,10 +12,19 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(username, password, rememberMe);
+    try {
+      await login(username, password, rememberMe);
+      // Get the intended destination from location state, or default to dashboard
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch (error) {
+      // Error is already handled by the auth context
+    }
   };
 
   return (

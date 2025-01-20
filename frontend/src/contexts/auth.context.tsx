@@ -207,43 +207,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuthStatus = async () => {
       try {
         setIsLoading(true);
+        setAuthStatus(AuthStatus.LOADING);
         
         // Check localStorage first
         const sessionStr = localStorage.getItem(STORAGE_KEY);
-        if (sessionStr) {
-          try {
-            const session = JSON.parse(sessionStr);
-            if (!session.token || !session.refreshToken || !session.expiresAt) {
-              throw new Error('Invalid session data');
-            }
+        if (!sessionStr) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthStatus(AuthStatus.UNAUTHENTICATED);
+          return;
+        }
 
-            // Check if session has expired
-            if (Date.now() > session.expiresAt) {
-              throw new Error('Session expired');
-            }
-
-            api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
-          } catch (e) {
-            // If session data is invalid or expired, clear it
-            localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(BIOMETRICS_KEY);
-            api.defaults.headers.common['Authorization'] = '';
-            setIsBiometricsEnabled(false);
-            throw e; // Re-throw to trigger the catch block below
+        try {
+          const session = JSON.parse(sessionStr);
+          if (!session.token || !session.refreshToken || !session.expiresAt) {
+            throw new Error('Invalid session data');
           }
+
+          // Check if session has expired
+          if (Date.now() > session.expiresAt) {
+            throw new Error('Session expired');
+          }
+
+          api.defaults.headers.common['Authorization'] = `Bearer ${session.token}`;
+        } catch (e) {
+          // If session data is invalid or expired, clear it
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(BIOMETRICS_KEY);
+          api.defaults.headers.common['Authorization'] = '';
+          setIsBiometricsEnabled(false);
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthStatus(AuthStatus.UNAUTHENTICATED);
+          return;
         }
 
         const response = await api.get<User>('/auth/me');
         setUser(response.data);
         setIsAuthenticated(true);
+        setAuthStatus(AuthStatus.AUTHENTICATED);
         await fetchDevices();
       } catch (error) {
         setUser(null);
         setIsAuthenticated(false);
+        setAuthStatus(AuthStatus.UNAUTHENTICATED);
         localStorage.removeItem(STORAGE_KEY);
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          navigate('/login');
-        }
       } finally {
         setIsLoading(false);
       }
@@ -420,8 +428,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
       
-      navigate('/dashboard');
-      
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.fullName}!`,
@@ -468,6 +474,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           description: "An unexpected error occurred",
         });
       }
+      throw err;
     } finally {
       setIsLoading(false);
     }
