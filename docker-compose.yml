@@ -49,6 +49,9 @@ services:
       - DB_DATABASE=${DB_DATABASE:-squadron}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-your_super_secret_jwt_key_here}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-1d}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-7d}
     ports:
       - "3000:3000"
     depends_on:
