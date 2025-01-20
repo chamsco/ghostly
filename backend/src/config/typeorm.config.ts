@@ -10,6 +10,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASSWORD || 'squadronpass',
   database: process.env.DB_DATABASE || 'squadron',
   entities: [User, Device],
-  synchronize: process.env.NODE_ENV !== 'production', // Only enable in development
-  logging: process.env.NODE_ENV !== 'production',
+  synchronize: true, // Temporarily enable for initial setup
+  logging: true,
+  dropSchema: false, // Don't drop existing tables
 }; 
