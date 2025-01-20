@@ -67,16 +67,37 @@ export class AuthController {
     @Body('rememberMe') rememberMe: boolean,
     @Req() req: Request
   ) {
+    console.log('🔄 Login attempt:', {
+      username,
+      rememberMe,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      timestamp: new Date().toISOString()
+    });
+
     try {
       const user = await this.authService.validateUser(username, password);
       if (!user) {
+        console.log('❌ Invalid credentials:', { username });
         throw new UnauthorizedException('Invalid username or password');
       }
+
+      console.log('✅ User validated:', {
+        userId: user.id,
+        username: user.username,
+        isAdmin: user.isAdmin
+      });
 
       const userAgent = req.headers['user-agent'] || 'unknown';
       const ip = req.ip || 'unknown';
 
       const result = await this.authService.login(user, userAgent, userAgent, ip, rememberMe);
+
+      console.log('✅ Login successful:', {
+        userId: user.id,
+        deviceId: result.deviceId,
+        timestamp: new Date().toISOString()
+      });
 
       return {
         ...result,
@@ -85,6 +106,11 @@ export class AuthController {
         )
       };
     } catch (error) {
+      console.error('❌ Login error:', {
+        error,
+        username,
+        timestamp: new Date().toISOString()
+      });
       if (error instanceof UnauthorizedException ||
           error instanceof InternalServerErrorException) {
         throw error;
@@ -264,25 +290,50 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getCurrentUser(@Req() req: RequestWithUser) {
-    const user = await this.userRepository.findOne({
-      where: { id: req.user.id },
-      select: [
-        'id', 
-        'username', 
-        'email', 
-        'fullName', 
-        'isAdmin',
-        'twoFactorEnabled',
-        'isBiometricsEnabled',
-        'enabledAuthMethods',
-        'requiresAdditionalAuth'
-      ]
+    console.log('🔍 Getting current user:', {
+      userId: req.user.id,
+      headers: req.headers,
+      timestamp: new Date().toISOString()
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: req.user.id },
+        select: [
+          'id', 
+          'username', 
+          'email', 
+          'fullName', 
+          'isAdmin',
+          'twoFactorEnabled',
+          'isBiometricsEnabled',
+          'enabledAuthMethods',
+          'requiresAdditionalAuth'
+        ]
+      });
 
-    return user;
+      if (!user) {
+        console.error('❌ User not found:', {
+          userId: req.user.id,
+          timestamp: new Date().toISOString()
+        });
+        throw new UnauthorizedException('User not found');
+      }
+
+      console.log('✅ User found:', {
+        userId: user.id,
+        isAdmin: user.isAdmin,
+        timestamp: new Date().toISOString()
+      });
+
+      return user;
+    } catch (error) {
+      console.error('❌ Error getting current user:', {
+        error,
+        userId: req.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      throw error;
+    }
   }
 } 

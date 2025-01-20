@@ -767,9 +767,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const validateSession = async () => {
     try {
+      console.log('🔍 Validating session...');
       const sessionStr = localStorage.getItem(STORAGE_KEY);
       if (!sessionStr) {
-        console.log('No session found in validateSession');
+        console.log('❌ No session found in localStorage');
         setIsAuthenticated(false);
         setUser(null);
         setAuthStatus(AuthStatus.UNAUTHENTICATED);
@@ -779,15 +780,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session: SecureSession = JSON.parse(sessionStr);
       const now = Date.now();
 
-      console.log('Session found:', { 
-        expiresAt: new Date(session.expiresAt), 
+      console.log('📦 Session data:', {
+        expiresAt: new Date(session.expiresAt),
         now: new Date(now),
-        isExpired: now >= session.expiresAt 
+        isExpired: now >= session.expiresAt,
+        deviceId: session.deviceId,
+        user: session.user
       });
 
       // Check if session is expired
       if (now >= session.expiresAt) {
-        console.log('Session expired');
+        console.log('⏰ Session expired');
         localStorage.removeItem(STORAGE_KEY);
         setIsAuthenticated(false);
         setUser(null);
@@ -797,25 +800,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If we already have a valid user and token, and not near expiry, skip validation
       if (isAuthenticated && user && now < session.expiresAt - 5 * 60 * 1000) {
-        console.log('Using cached authentication state');
+        console.log('✅ Using cached authentication state');
         return true;
       }
 
       // Set token before validation
       const token = securityUtils.decryptToken(session.token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 Set authorization header');
 
       // Validate with backend
-      console.log('Validating session with backend...');
+      console.log('🔄 Validating session with backend...');
       const response = await api.get('/auth/me');
-      console.log('Validation successful:', response.data);
+      console.log('✅ Backend validation successful:', response.data);
       
       setUser(response.data);
       setIsAuthenticated(true);
       setAuthStatus(AuthStatus.AUTHENTICATED);
       return true;
     } catch (error) {
-      console.error('Session validation error:', error);
+      console.error('❌ Session validation error:', {
+        error,
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        config: error.config
+      });
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem(STORAGE_KEY);
         setIsAuthenticated(false);
@@ -1000,6 +1010,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use(
       async (config) => {
+        console.log('🔄 Request interceptor:', {
+          url: config.url,
+          method: config.method,
+          isAuthEndpoint: config.url?.includes('/auth/'),
+          currentPath: window.location.pathname
+        });
+
         // Skip validation for auth endpoints and public routes
         if (
           config.url?.includes('/auth/') || 
@@ -1013,6 +1030,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const session: SecureSession = JSON.parse(sessionStr);
             const token = securityUtils.decryptToken(session.token);
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('🔑 Attached token to auth endpoint request');
           }
           return config;
         }
@@ -1020,7 +1038,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // For protected routes, validate session
         const sessionStr = localStorage.getItem(STORAGE_KEY);
         if (!sessionStr) {
+          console.log('❌ No session found for protected route');
           if (!window.location.pathname.includes('/login')) {
+            console.log('🔄 Redirecting to login');
             navigate('/login', { state: { from: window.location.pathname } });
           }
           throw new Error('No session found');
@@ -1032,9 +1052,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Only validate if not authenticated or near session expiry
         if (!isAuthenticated || Date.now() > session.expiresAt - 5 * 60 * 1000) {
-          console.log('Validating session before request...');
+          console.log('🔍 Validating session before request...');
           const isValid = await validateSession();
           if (!isValid && !window.location.pathname.includes('/login')) {
+            console.log('❌ Session invalid, redirecting to login');
             navigate('/login', { state: { from: window.location.pathname } });
             throw new Error('Session invalid');
           }
@@ -1042,26 +1063,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        console.error('❌ Request interceptor error:', error);
+        return Promise.reject(error);
+      }
     );
 
     const responseInterceptor = api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log('✅ Response interceptor:', {
+          url: response.config.url,
+          status: response.status,
+          data: response.data
+        });
+        return response;
+      },
       async (error) => {
+        console.error('❌ Response interceptor error:', {
+          url: error.config?.url,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+
         if (error.response?.status === 401 && error.config && !error.config._retry) {
           error.config._retry = true;
           try {
-            console.log('Attempting to refresh session...');
+            console.log('🔄 Attempting to refresh session...');
             await refreshSession();
             const sessionStr = localStorage.getItem(STORAGE_KEY);
             if (sessionStr) {
               const session: SecureSession = JSON.parse(sessionStr);
               const token = securityUtils.decryptToken(session.token);
               error.config.headers.Authorization = `Bearer ${token}`;
+              console.log('🔑 Retrying request with new token');
               return api(error.config);
             }
           } catch (refreshError) {
-            console.error('Session refresh failed:', refreshError);
+            console.error('❌ Session refresh failed:', refreshError);
             // Only logout if we're not already on the login page
             if (!window.location.pathname.includes('/login')) {
               await logout();
