@@ -5,6 +5,18 @@ export const api = axios.create({
   withCredentials: true, // Important for cookies
 });
 
+// Add request interceptor to add token from session
+api.interceptors.request.use((config) => {
+  const session = localStorage.getItem('squadron:session');
+  if (session) {
+    const { token } = JSON.parse(session);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 // Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,

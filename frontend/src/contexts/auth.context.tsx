@@ -73,8 +73,8 @@ interface TokenPayload {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const STORAGE_KEY = 'ghostly:session';
-const BIOMETRICS_KEY = 'ghostly:biometrics';
+const STORAGE_KEY = 'squadron:session';
+const BIOMETRICS_KEY = 'squadron:biometrics';
 const TOKEN_REFRESH_THRESHOLD = 5 * 60; // 5 minutes in seconds
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const PERSISTENT_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
@@ -243,6 +243,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { access_token, user, refreshToken, deviceId } = response.data;
       
+      // Set the Authorization header immediately
+      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
       // Create session object
       const session = {
         user,
@@ -374,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         publicKey: {
           challenge: new Uint8Array(challenge),
           rp: {
-            name: 'Ghostly',
+            name: 'Squadron',
             id: rpId
           },
           user: {

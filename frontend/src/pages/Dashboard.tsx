@@ -3,8 +3,11 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Server, Cpu, HelpCircle } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { metricsService, SystemMetrics } from '@/services/metrics';
+import { formatBytes } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 interface Stats {
   totalProjects: number;
@@ -138,6 +141,8 @@ export function Dashboard() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -157,6 +162,32 @@ export function Dashboard() {
     fetchStats();
     // Set up polling every 30 seconds
     const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const [currentMetrics, historical] = await Promise.all([
+          metricsService.getSystemMetrics(),
+          metricsService.getHistoricalMetrics()
+        ]);
+        setMetrics(currentMetrics);
+        setHistoricalData(historical.timestamps.map((timestamp, i) => ({
+          timestamp,
+          cpu: historical.cpu[i],
+          memory: historical.memory[i],
+          network: historical.network[i]
+        })));
+      } catch (err) {
+        setError('Failed to fetch metrics');
+        console.error('Error fetching metrics:', err);
+      }
+    };
+
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30 seconds
+
     return () => clearInterval(interval);
   }, []);
 
@@ -257,6 +288,122 @@ export function Dashboard() {
             </div>
           </Card>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">CPU Usage</h3>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Current CPU utilization across all cores</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-bold">{metrics?.cpu.usage.toFixed(1)}%</div>
+              <Progress value={metrics?.cpu.usage || 0} className="mt-2" />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {metrics?.cpu.cores} Cores Available
+              </p>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Memory Usage</h3>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Current RAM utilization</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-bold">{metrics?.memory.usage.toFixed(1)}%</div>
+              <Progress value={metrics?.memory.usage || 0} className="mt-2" />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatBytes(metrics?.memory.used || 0)} / {formatBytes(metrics?.memory.total || 0)}
+              </p>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Storage Usage</h3>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Current disk space utilization</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-bold">{metrics?.storage.usage.toFixed(1)}%</div>
+              <Progress value={metrics?.storage.usage || 0} className="mt-2" />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {formatBytes(metrics?.storage.used || 0)} / {formatBytes(metrics?.storage.total || 0)}
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">System Traffic Overview</h3>
+            <Tooltip>
+              <TooltipTrigger>
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>24-hour system resource utilization</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={historicalData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="timestamp" 
+                  tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+                />
+                <YAxis />
+                <RechartsTooltip />
+                <Area 
+                  type="monotone" 
+                  dataKey="cpu" 
+                  stackId="1" 
+                  stroke="#8884d8" 
+                  fill="#8884d8" 
+                  name="CPU"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="memory" 
+                  stackId="1" 
+                  stroke="#82ca9d" 
+                  fill="#82ca9d" 
+                  name="Memory"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="network" 
+                  stackId="1" 
+                  stroke="#ffc658" 
+                  fill="#ffc658" 
+                  name="Network"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
       </div>
     </TooltipProvider>
   );

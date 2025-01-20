@@ -13,7 +13,7 @@ interface Step {
 
 const steps: Step[] = [
   {
-    title: 'Welcome to Hostking',
+    title: 'Welcome to Squadron',
     description: 'Let\'s get you set up with your development environment.',
   },
   {

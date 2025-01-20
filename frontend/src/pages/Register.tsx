@@ -6,7 +6,7 @@ export function Register() {
       <div className="w-full max-w-md space-y-8 p-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create an account</h1>
-          <p className="text-muted-foreground">Get started with Hostking</p>
+          <p className="text-muted-foreground">Get started with Squadron</p>
         </div>
         <RegisterForm />
       </div>

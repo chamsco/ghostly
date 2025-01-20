@@ -1,7 +1,7 @@
 {
-  "name": "ghostly-backend",
+  "name": "squadron-backend",
   "version": "1.0.0",
-  "description": "Ghostly DevOps Project Management Platform Backend",
+  "description": "Squadron DevOps Project Management Platform Backend",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

@@ -36,7 +36,7 @@ export function RegisterForm() {
       await registerUser(data);
       toast({
         title: 'Registration successful',
-        description: 'Welcome to Hostking!',
+        description: 'Welcome to Squadron!',
       });
       navigate('/');
     } catch (error: any) {

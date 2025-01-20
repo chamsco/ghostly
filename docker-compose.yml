@@ -4,22 +4,24 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ghostly
-      POSTGRES_USER: ghostlyuser
-      POSTGRES_PASSWORD: ghostlypass
+      - POSTGRES_DB=squadron
+      - POSTGRES_USER=squadronuser
+      - POSTGRES_PASSWORD=squadronpass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ghostlyuser -d ghostly"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U squadronuser -d squadron"]
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
 
   # Redis
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
@@ -29,6 +31,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
 
   # Backend API
   backend:
@@ -36,15 +40,17 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
+      - PORT=3000
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USERNAME=ghostlyuser
-      - DB_PASSWORD=ghostlypass
-      - DB_DATABASE=ghostly
+      - DB_USERNAME=squadronuser
+      - DB_PASSWORD=squadronpass
+      - DB_DATABASE=squadron
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - JWT_SECRET=your_jwt_secret_key_here
       - SESSION_SECRET=your_session_secret_key_here
-      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend/logs:/app/logs
     ports:

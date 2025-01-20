@@ -34,7 +34,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside className={`fixed left-0 top-0 z-40 h-screen w-64 transform bg-card transition-transform duration-200 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-full flex-col justify-between border-r">
           <div className="px-4 py-6">
-            <h2 className="mb-6 text-2xl font-semibold">Hostking</h2>
+            <h2 className="mb-6 text-2xl font-semibold">squadron.host</h2>
             <nav className="space-y-2">
               <Button
                 variant="ghost"

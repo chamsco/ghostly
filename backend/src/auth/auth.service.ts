@@ -119,7 +119,7 @@ export class AuthService {
     }
 
     const secret = speakeasy.generateSecret({
-      name: 'Hostking'
+      name: 'Squadron'
     });
 
     user.twoFactorSecret = secret.base32;
@@ -186,7 +186,7 @@ export class AuthService {
     const registrationOptions = {
       challenge: challenge.toString('base64'),
       rp: {
-        name: 'Hostking',
+        name: 'Squadron',
         id: process.env.DOMAIN || 'localhost'
       },
       user: {
