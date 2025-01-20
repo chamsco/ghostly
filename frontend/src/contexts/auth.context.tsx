@@ -820,11 +820,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error('❌ Session validation error:', {
-        error,
-        status: error.response?.status,
-        data: error.response?.data,
-        headers: error.response?.headers,
-        config: error.config
+        error: error instanceof Error ? error.message : 'Unknown error',
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        data: axios.isAxiosError(error) ? error.response?.data : undefined,
+        headers: axios.isAxiosError(error) ? error.response?.headers : undefined,
+        config: axios.isAxiosError(error) ? error.config : undefined
       });
       if (!window.location.pathname.includes('/login')) {
         localStorage.removeItem(STORAGE_KEY);
