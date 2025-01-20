@@ -8,7 +8,9 @@ import {
   UseGuards,
   Req,
   Get,
-  Patch
+  Patch,
+  ConflictException,
+  InternalServerErrorException
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -36,42 +38,59 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
-    const user = await this.authService.register(registerDto);
-    return { 
-      message: 'Registration successful', 
-      userId: user.id 
-    };
+    try {
+      const user = await this.authService.register(registerDto);
+      return {
+        message: 'Registration successful',
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName
+        }
+      };
+    } catch (error) {
+      if (error instanceof ConflictException || 
+          error instanceof UnauthorizedException ||
+          error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Registration failed');
+    }
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body() loginDto: LoginDto,
+    @Body('username') username: string,
+    @Body('password') password: string,
+    @Body('rememberMe') rememberMe: boolean,
     @Req() req: Request
   ) {
-    const user = await this.authService.validateUser(
-      loginDto.username,
-      loginDto.password
-    );
+    try {
+      const user = await this.authService.validateUser(username, password);
+      if (!user) {
+        throw new UnauthorizedException('Invalid username or password');
+      }
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      const ip = req.ip || 'unknown';
+
+      const result = await this.authService.login(user, userAgent, userAgent, ip, rememberMe);
+
+      return {
+        ...result,
+        availableAuthMethods: user.enabledAuthMethods.filter(
+          method => method !== AuthMethod.PASSWORD
+        )
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException ||
+          error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Login failed');
     }
-
-    const result = await this.authService.login(
-      user,
-      loginDto.deviceName,
-      req.headers['user-agent'] || 'unknown',
-      req.ip,
-      loginDto.rememberMe
-    );
-
-    return {
-      ...result,
-      availableAuthMethods: user.enabledAuthMethods.filter(
-        method => method !== AuthMethod.PASSWORD
-      )
-    };
   }
 
   @Post('2fa/generate')

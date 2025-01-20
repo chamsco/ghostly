@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -23,43 +23,69 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<User> {
     const { email, password, username, fullName } = registerDto;
 
-    // Check if user exists
-    const existingUser = await this.usersRepository.findOne({
-      where: [{ email }, { username }],
-    });
+    try {
+      // Check if user exists
+      const existingUser = await this.usersRepository.findOne({
+        where: [{ email }, { username }],
+      });
 
-    if (existingUser) {
-      throw new ConflictException(
-        existingUser.email === email 
-          ? 'Email already registered' 
-          : 'Username already taken'
-      );
+      if (existingUser) {
+        throw new ConflictException(
+          existingUser.email === email 
+            ? 'Email already registered' 
+            : 'Username already taken'
+        );
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create new user
+      const user = this.usersRepository.create({
+        email,
+        username,
+        password: hashedPassword,
+        fullName,
+        enabledAuthMethods: [AuthMethod.PASSWORD],
+        // First user becomes admin
+        isAdmin: (await this.usersRepository.count()) === 0,
+        requiresAdditionalAuth: false
+      });
+
+      return this.usersRepository.save(user);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      if (error.code === '42P01') { // relation does not exist
+        throw new InternalServerErrorException('Database setup incomplete. Please contact support.');
+      }
+      throw new InternalServerErrorException('Failed to create user account');
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
-    const user = this.usersRepository.create({
-      email,
-      username,
-      password: hashedPassword,
-      fullName,
-      enabledAuthMethods: [AuthMethod.PASSWORD],
-      // First user becomes admin
-      isAdmin: (await this.usersRepository.count()) === 0,
-      requiresAdditionalAuth: false
-    });
-
-    return this.usersRepository.save(user);
   }
 
   async validateUser(username: string, password: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({ where: { username } });
-    if (user && await bcrypt.compare(password, user.password)) {
+    try {
+      const user = await this.usersRepository.findOne({ where: { username } });
+      if (!user) {
+        throw new UnauthorizedException('Invalid username or password');
+      }
+      
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid username or password');
+      }
+      
       return user;
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      if (error.code === '42P01') { // relation does not exist
+        throw new InternalServerErrorException('Database setup incomplete. Please contact support.');
+      }
+      throw new InternalServerErrorException('Authentication service unavailable');
     }
-    return null;
   }
 
   async login(user: User, deviceName: string, userAgent: string, ip: string, rememberMe = false) {
