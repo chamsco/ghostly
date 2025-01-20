@@ -798,16 +798,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      // If we already have a valid user and token, and not near expiry, skip validation
-      if (isAuthenticated && user && now < session.expiresAt - 5 * 60 * 1000) {
-        console.log('✅ Using cached authentication state');
-        return true;
-      }
-
       // Set token before validation
       const token = securityUtils.decryptToken(session.token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       console.log('🔑 Set authorization header');
+
+      // If we already have a valid user and token, and not near expiry, skip backend validation
+      if (isAuthenticated && user && now < session.expiresAt - 5 * 60 * 1000) {
+        console.log('✅ Using cached authentication state');
+        return true;
+      }
 
       // Validate with backend
       console.log('🔄 Validating session with backend...');
@@ -822,11 +822,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Session validation error:', {
         error: error instanceof Error ? error.message : 'Unknown error',
         status: axios.isAxiosError(error) ? error.response?.status : undefined,
-        data: axios.isAxiosError(error) ? error.response?.data : undefined,
-        headers: axios.isAxiosError(error) ? error.response?.headers : undefined,
-        config: axios.isAxiosError(error) ? error.config : undefined
+        data: axios.isAxiosError(error) ? error.response?.data : undefined
       });
-      if (!window.location.pathname.includes('/login')) {
+      
+      // Only clear session if not on login page and it's a 401 error
+      if (!window.location.pathname.includes('/login') && 
+          axios.isAxiosError(error) && 
+          error.response?.status === 401) {
         localStorage.removeItem(STORAGE_KEY);
         setIsAuthenticated(false);
         setUser(null);
@@ -1050,8 +1052,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = securityUtils.decryptToken(session.token);
         config.headers.Authorization = `Bearer ${token}`;
 
-        // Only validate if not authenticated or near session expiry
-        if (!isAuthenticated || Date.now() > session.expiresAt - 5 * 60 * 1000) {
+        // Skip validation if we're already authenticated and session is not near expiry
+        if (isAuthenticated && Date.now() < session.expiresAt - 5 * 60 * 1000) {
+          console.log('✅ Using cached auth state for request');
+          return config;
+        }
+
+        // Only validate session for non-auth endpoints
+        if (!config.url?.includes('/auth/')) {
           console.log('🔍 Validating session before request...');
           const isValid = await validateSession();
           if (!isValid && !window.location.pathname.includes('/login')) {
