@@ -173,12 +173,7 @@ export function Dashboard() {
           metricsService.getHistoricalMetrics()
         ]);
         setMetrics(currentMetrics);
-        setHistoricalData(historical.timestamps.map((timestamp, i) => ({
-          timestamp,
-          cpu: historical.cpu[i],
-          memory: historical.memory[i],
-          network: historical.network[i]
-        })));
+        setHistoricalData(historical.dataPoints);
       } catch (err) {
         setError('Failed to fetch metrics');
         console.error('Error fetching metrics:', err);
@@ -306,7 +301,7 @@ export function Dashboard() {
               <div className="text-2xl font-bold">{metrics?.cpu.usage.toFixed(1)}%</div>
               <Progress value={metrics?.cpu.usage || 0} className="mt-2" />
               <p className="mt-2 text-xs text-muted-foreground">
-                {metrics?.cpu.cores} Cores Available
+                {metrics?.cpu.cores} Cores @ {metrics?.cpu.speed}MHz
               </p>
             </div>
           </Card>
@@ -324,8 +319,8 @@ export function Dashboard() {
               </Tooltip>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-bold">{metrics?.memory.usage.toFixed(1)}%</div>
-              <Progress value={metrics?.memory.usage || 0} className="mt-2" />
+              <div className="text-2xl font-bold">{metrics?.memory.usagePercentage.toFixed(1)}%</div>
+              <Progress value={metrics?.memory.usagePercentage || 0} className="mt-2" />
               <p className="mt-2 text-xs text-muted-foreground">
                 {formatBytes(metrics?.memory.used || 0)} / {formatBytes(metrics?.memory.total || 0)}
               </p>
@@ -345,10 +340,10 @@ export function Dashboard() {
               </Tooltip>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-bold">{metrics?.storage.usage.toFixed(1)}%</div>
-              <Progress value={metrics?.storage.usage || 0} className="mt-2" />
+              <div className="text-2xl font-bold">{metrics?.disk?.usagePercentage.toFixed(1)}%</div>
+              <Progress value={metrics?.disk?.usagePercentage || 0} className="mt-2" />
               <p className="mt-2 text-xs text-muted-foreground">
-                {formatBytes(metrics?.storage.used || 0)} / {formatBytes(metrics?.storage.total || 0)}
+                {formatBytes(metrics?.disk?.used || 0)} / {formatBytes(metrics?.disk?.total || 0)}
               </p>
             </div>
           </Card>
