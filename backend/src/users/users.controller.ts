@@ -1,16 +1,24 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, UnauthorizedException, ConflictException, InternalServerErrorException, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { UserResponseDto } from './dto/user-response.dto';
 
+interface RequestWithUser extends Request {
+  user: {
+    id: string;
+    isAdmin: boolean;
+  };
+}
+
 @Controller('users')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard)  // All routes require authentication
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @UseGuards(AdminGuard)  // Only admins can get all users
   async getAllUsers(): Promise<UserResponseDto[]> {
     try {
       const users = await this.usersService.findAll();
@@ -33,6 +41,7 @@ export class UsersController {
   }
 
   @Post()
+  @UseGuards(AdminGuard)  // Only admins can create users
   async createUser(@Body() userData: {
     username: string;
     email: string;
@@ -62,9 +71,20 @@ export class UsersController {
   @Put(':id')
   async updateUser(
     @Param('id') id: string,
-    @Body() userData: Partial<User>
+    @Body() userData: Partial<User>,
+    @Req() req: RequestWithUser
   ): Promise<UserResponseDto> {
     try {
+      // Check if user is updating their own profile or is an admin
+      if (id !== req.user.id && !req.user.isAdmin) {
+        throw new UnauthorizedException('You can only update your own profile');
+      }
+
+      // Only admins can update admin status
+      if (userData.isAdmin !== undefined && !req.user.isAdmin) {
+        delete userData.isAdmin;
+      }
+
       const user = await this.usersService.update(id, userData);
       return {
         id: user.id,
@@ -84,6 +104,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @UseGuards(AdminGuard)  // Only admins can delete users
   async deleteUser(@Param('id') id: string): Promise<void> {
     try {
       await this.usersService.delete(id);
