@@ -1,7 +1,6 @@
 import { useAuth } from '@/contexts/auth.context';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Bell, Moon, Sun, Globe } from 'lucide-react';
 import { useTheme } from '@/contexts/theme.context';
