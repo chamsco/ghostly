@@ -13,8 +13,8 @@
  * - Password reset
  * - Route protection
  */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, UserStatus } from '@/types/user';
 import { CreateUserDto, BiometricRegistrationOptions } from '@/types/auth';
 //import {BiometricAuthenticationOptions} from '@/types/auth';
@@ -44,11 +44,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password'];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isPublicRoute = useMemo(() => {
+    return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
+  }, [location.pathname]);
 
   // Check auth status on mount
   useEffect(() => {
@@ -61,6 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!token) {
           console.log('⚠️ No token found, setting loading to false');
           setLoading(false);
+          if (!isPublicRoute) {
+            console.log('🔄 Redirecting to login page');
+            navigate('/login');
+          }
           return;
         }
 
@@ -72,6 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('❌ Auth check failed:', err);
         localStorage.removeItem('accessToken');
         setError(err instanceof Error ? err.message : 'Authentication failed');
+        
+        if (!isPublicRoute) {
+          console.log('🔄 Redirecting to login page due to error');
+          navigate('/login');
+        }
         
         // Log additional error details
         if (axios.isAxiosError(err)) {
@@ -92,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkAuthStatus();
-  }, []);
+  }, [navigate, isPublicRoute]);
 
   const login = async (username: string, password: string, rememberMe?: boolean) => {
     console.log('🔐 Attempting login...', { username, rememberMe });

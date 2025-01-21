@@ -18,6 +18,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ProjectErrorBoundary } from '@/components/ProjectErrorBoundary';
+import { AppProviders } from '@/providers';
 
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
@@ -42,7 +43,11 @@ export const queryClient = new QueryClient({
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <DashboardLayout />,
+    element: (
+      <AppProviders>
+        <DashboardLayout />
+      </AppProviders>
+    ),
     errorElement: <ProjectErrorBoundary />,
     children: [
       {
@@ -61,18 +66,34 @@ export const router = createBrowserRouter([
   },
   {
     path: 'login',
-    element: <Login />
+    element: (
+      <AppProviders>
+        <Login />
+      </AppProviders>
+    )
   },
   {
     path: 'register',
-    element: <Register />
+    element: (
+      <AppProviders>
+        <Register />
+      </AppProviders>
+    )
   },
   {
     path: 'forgot-password',
-    element: <ForgotPassword />
+    element: (
+      <AppProviders>
+        <ForgotPassword />
+      </AppProviders>
+    )
   },
   {
     path: 'reset-password',
-    element: <ResetPassword />
+    element: (
+      <AppProviders>
+        <ResetPassword />
+      </AppProviders>
+    )
   }
 ]); 
