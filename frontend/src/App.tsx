@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AuthErrorBoundary from '@/components/auth/AuthErrorBoundary';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Dashboard } from '@/pages/Dashboard';
@@ -16,6 +16,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AdminRoute } from '@/components/AdminRoute';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const ProtectedDashboardLayout = () => (
+  <DashboardLayout>
+    <Outlet />
+  </DashboardLayout>
+);
 
 export function App() {
   return (
@@ -40,15 +47,20 @@ export function App() {
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   
-                  <Route path="/" element={<ProtectedRoute />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="projects" element={<Projects />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="settings" element={<Settings />} />
+                  <Route element={<ProtectedRoute />}>
+                    <Route element={<ProtectedDashboardLayout />}>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/projects" element={<Projects />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+                    </Route>
                   </Route>
 
-                  <Route path="/users" element={<AdminRoute />}>
-                    <Route index element={<Users />} />
+                  <Route element={<AdminRoute />}>
+                    <Route element={<ProtectedDashboardLayout />}>
+                      <Route path="/users" element={<Users />} />
+                    </Route>
                   </Route>
                 </Routes>
                 <Toaster />
