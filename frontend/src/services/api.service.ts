@@ -13,6 +13,7 @@ import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrat
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto } from '@/types/project';
+import type { Server } from '@/types/server';
 
 // Get the base URL from environment or use default
 const BASE_URL = import.meta.env.VITE_API_URL || '';
@@ -204,32 +205,11 @@ export const authApi = {
 
 // Projects API endpoints
 export const projectsApi = {
-  async list(): Promise<Project[]> {
-    const response = await api.get<Project[]>('/projects');
-    return response.data;
-  },
-
-  async create(data: CreateProjectDto): Promise<Project> {
-    const response = await api.post<Project>('/projects', data);
-    return response.data;
-  },
-
-  async get(id: string): Promise<Project> {
-    const response = await api.get<Project>(`/projects/${id}`);
-    return response.data;
-  },
-
-  async start(id: string): Promise<Project> {
-    const response = await api.post<Project>(`/projects/${id}/start`);
-    return response.data;
-  },
-
-  async stop(id: string): Promise<Project> {
-    const response = await api.post<Project>(`/projects/${id}/stop`);
-    return response.data;
-  },
-
-  async delete(id: string): Promise<void> {
-    await api.delete(`/projects/${id}`);
-  }
+  list: () => api.get<Project[]>('/projects').then(res => res.data),
+  create: (data: CreateProjectDto) => api.post<Project>('/projects', data).then(res => res.data),
+  get: (id: string) => api.get<Project>(`/projects/${id}`).then(res => res.data),
+  start: (id: string) => api.post<Project>(`/projects/${id}/deploy`).then(res => res.data),
+  stop: (id: string) => api.post<Project>(`/projects/${id}/stop`).then(res => res.data),
+  delete: (id: string) => api.delete<void>(`/projects/${id}`).then(res => res.data),
+  listServers: () => api.get<Server[]>('/servers').then(res => res.data)
 };

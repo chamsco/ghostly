@@ -30,6 +30,8 @@ import { Projects } from '@/pages/Projects';
 import { Users } from '@/pages/Users';
 import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
+import { CreateProject } from '@/pages/CreateProject';
+import { ProjectSettings } from '@/pages/ProjectSettings';
 
 // Configure React Query client with custom defaults
 // - Disable automatic retries on failed requests
@@ -67,6 +69,14 @@ export const router = createBrowserRouter([
         element: <Projects />
       },
       {
+        path: 'projects/create',
+        element: <CreateProject />
+      },
+      {
+        path: 'projects/:id/settings',
+        element: <ProjectSettings />
+      },
+      {
         path: 'users',
         element: <Users />
       },
@@ -82,42 +92,22 @@ export const router = createBrowserRouter([
   },
   {
     path: 'login',
-    element: (
-      <AppProviders>
-        <Login />
-      </AppProviders>
-    )
+    element: <AppProviders><Login /></AppProviders>
   },
   {
     path: 'register',
-    element: (
-      <AppProviders>
-        <Register />
-      </AppProviders>
-    )
+    element: <AppProviders><Register /></AppProviders>
   },
   {
     path: 'onboarding',
-    element: (
-      <AppProviders>
-        <Onboarding />
-      </AppProviders>
-    )
+    element: <AppProviders><Onboarding /></AppProviders>
   },
   {
     path: 'forgot-password',
-    element: (
-      <AppProviders>
-        <ForgotPassword />
-      </AppProviders>
-    )
+    element: <AppProviders><ForgotPassword /></AppProviders>
   },
   {
     path: 'reset-password',
-    element: (
-      <AppProviders>
-        <ResetPassword />
-      </AppProviders>
-    )
+    element: <AppProviders><ResetPassword /></AppProviders>
   }
 ]); 
