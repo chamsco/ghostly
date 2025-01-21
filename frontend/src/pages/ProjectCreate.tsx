@@ -12,58 +12,124 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useProjects } from '@/contexts/projects.context';
-import { ProjectType } from '@/types/project';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { ProjectType, DatabaseType, ServiceType, CreateProjectDto } from '@/types/project';
+import { projectsApi } from '@/services/api.service';
 
 // Form validation schema
 const formSchema = z.object({
-  name: z.string()
-    .min(3, 'Project name must be at least 3 characters')
-    .max(50, 'Project name must be less than 50 characters')
-    .regex(/^[a-z0-9-]+$/, 'Project name can only contain lowercase letters, numbers, and hyphens'),
+  name: z.string().min(3, 'Project name must be at least 3 characters'),
   type: z.nativeEnum(ProjectType),
   serverId: z.string(),
-  environmentVariables: z.record(z.string(), z.string()).optional(),
-  dockerComposeFile: z.string().optional()
+  // Database specific fields
+  databaseType: z.nativeEnum(DatabaseType).optional(),
+  databaseName: z.string().optional(),
+  adminEmail: z.string().email().optional(),
+  // Service specific fields
+  serviceType: z.nativeEnum(ServiceType).optional(),
+  repositoryUrl: z.string().url().optional(),
+  // Website specific fields
+  branch: z.string().optional(),
+  // Common fields
+  environmentVariables: z.array(z.object({
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean()
+  })).default([])
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function ProjectCreate() {
+export function ProjectCreate() {
   const navigate = useNavigate();
-  const { createProject } = useProjects();
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      type: ProjectType.SUPABASE,
-      serverId: 'local', // Default to local deployment
-      environmentVariables: {},
-      dockerComposeFile: undefined
+      type: ProjectType.SERVICE,
+      serverId: '',
+      environmentVariables: [],
+      databaseType: undefined,
+      databaseName: '',
+      adminEmail: '',
+      serviceType: undefined,
+      repositoryUrl: '',
+      branch: 'main'
     }
   });
 
-  const onSubmit = async (data: FormValues) => {
-    try {
-      setError(null);
-      const project = await createProject(data);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const values = form.getValues();
+    if (!values.name || !values.type || !values.serverId) {
       toast({
-        title: 'Project created',
-        description: 'Your project is being set up...'
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
       });
-      navigate(`/projects/${project.id}`);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const projectData: CreateProjectDto = {
+        name: values.name,
+        type: values.type,
+        serverId: values.serverId,
+        environmentVariables: values.environmentVariables
+      };
+
+      // Add type-specific fields
+      if (values.type === ProjectType.DATABASE) {
+        if (!values.databaseType || !values.databaseName || !values.adminEmail) {
+          throw new Error('Please fill in all database fields');
+        }
+        Object.assign(projectData, {
+          databaseType: values.databaseType,
+          databaseName: values.databaseName,
+          adminEmail: values.adminEmail
+        });
+      } else if (values.type === ProjectType.SERVICE) {
+        if (!values.serviceType || !values.repositoryUrl) {
+          throw new Error('Please fill in all service fields');
+        }
+        Object.assign(projectData, {
+          serviceType: values.serviceType,
+          repositoryUrl: values.repositoryUrl
+        });
+      } else if (values.type === ProjectType.WEBSITE) {
+        if (!values.repositoryUrl) {
+          throw new Error('Please fill in the repository URL');
+        }
+        Object.assign(projectData, {
+          repositoryUrl: values.repositoryUrl,
+          branch: values.branch
+        });
+      }
+
+      await projectsApi.create(projectData);
+      toast({
+        title: "Success",
+        description: "Project created successfully"
+      });
+      navigate('/projects');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to create project",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -77,14 +143,8 @@ export default function ProjectCreate() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -115,10 +175,9 @@ export default function ProjectCreate() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={ProjectType.SUPABASE}>Supabase</SelectItem>
-                        <SelectItem value={ProjectType.POCKETBASE}>PocketBase</SelectItem>
-                        <SelectItem value={ProjectType.WEBSITE}>Website</SelectItem>
+                        <SelectItem value={ProjectType.DATABASE}>Database</SelectItem>
                         <SelectItem value={ProjectType.SERVICE}>Service</SelectItem>
+                        <SelectItem value={ProjectType.WEBSITE}>Website</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
@@ -162,7 +221,7 @@ export default function ProjectCreate() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={isLoading}>
                   Create Project
                 </Button>
               </div>
