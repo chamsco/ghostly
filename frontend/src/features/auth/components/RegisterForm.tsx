@@ -71,13 +71,18 @@ export function RegisterForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors }
+    formState: { errors },
+    watch,
+    setValue
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       acceptTerms: false
     }
   });
+
+  // Watch the acceptTerms field
+  const acceptTerms = watch('acceptTerms');
 
   /**
    * Handles form submission
@@ -171,18 +176,27 @@ export function RegisterForm() {
         <div className="flex items-start space-x-2">
           <Checkbox
             id="acceptTerms"
-            {...register('acceptTerms')}
+            checked={acceptTerms}
+            onCheckedChange={(checked) => {
+              setValue('acceptTerms', checked === true);
+            }}
             disabled={isLoading}
+            aria-describedby="terms-description"
           />
-          <label
-            htmlFor="acceptTerms"
-            className="text-xs text-muted-foreground leading-relaxed"
-          >
-            By creating an account, you agree to our{' '}
-            <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
-            {' '}and{' '}
-            <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-          </label>
+          <div className="grid gap-1.5 leading-none">
+            <label
+              htmlFor="acceptTerms"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Accept terms and conditions
+            </label>
+            <p id="terms-description" className="text-xs text-muted-foreground">
+              By creating an account, you agree to our{' '}
+              <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+              {' '}and{' '}
+              <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
+            </p>
+          </div>
         </div>
         {errors.acceptTerms && (
           <p className="text-xs text-destructive">{errors.acceptTerms.message}</p>

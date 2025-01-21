@@ -20,6 +20,7 @@ import { Repository } from 'typeorm';
 import { User, AuthMethod } from '../users/entities/user.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Request } from 'express';
+import { JwtService } from '@nestjs/jwt';
 
 interface RequestWithUser extends Request {
   user: {
@@ -33,20 +34,34 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService
   ) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     try {
       const user = await this.authService.register(registerDto);
+      
+      // Generate access token for the new user
+      const payload = { 
+        sub: user.id,
+        username: user.username,
+        isAdmin: user.isAdmin
+      };
+      const access_token = this.jwtService.sign(payload);
+
       return {
         message: 'Registration successful',
+        access_token,
         user: {
           id: user.id,
           username: user.username,
           email: user.email,
-          fullName: user.fullName
+          fullName: user.fullName,
+          isAdmin: user.isAdmin,
+          requiresAdditionalAuth: user.requiresAdditionalAuth,
+          enabledAuthMethods: user.enabledAuthMethods
         }
       };
     } catch (error) {
