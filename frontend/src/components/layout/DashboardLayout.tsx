@@ -31,7 +31,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
-
+  FolderKanban,
   LogOut,
   Menu,
   X,
@@ -61,6 +61,11 @@ const navItems: NavItem[] = [
     label: 'Dashboard',
     path: '/dashboard',
     icon: <LayoutDashboard className="h-5 w-5" />
+  },
+  {
+    label: 'Projects',
+    path: '/projects',
+    icon: <FolderKanban className="h-5 w-5" />
   },
   {
     label: 'Users',

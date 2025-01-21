@@ -26,6 +26,8 @@ import { Onboarding } from '@/pages/Onboarding';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import { Dashboard } from '@/pages/Dashboard';
+import { Projects } from '@/pages/Projects';
+import { Users } from '@/pages/Users';
 import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 
@@ -59,6 +61,14 @@ export const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: <Dashboard />
+      },
+      {
+        path: 'projects',
+        element: <Projects />
+      },
+      {
+        path: 'users',
+        element: <Users />
       },
       {
         path: 'profile',

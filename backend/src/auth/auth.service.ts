@@ -328,13 +328,27 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string, deviceId: string) {
-    const device = await this.devicesRepository.findOne({
-      where: { id: deviceId, refreshToken }
-    });
+  async logout(userId: string, deviceId: string): Promise<void> {
+    try {
+      // Find and remove the device
+      await this.devicesRepository.delete({
+        id: deviceId,
+        userId
+      });
 
-    if (device) {
-      await this.devicesRepository.remove(device);
+      console.log('✅ Device removed:', {
+        userId,
+        deviceId,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('❌ Error during logout:', {
+        error,
+        userId,
+        deviceId,
+        timestamp: new Date().toISOString()
+      });
+      throw new InternalServerErrorException('Failed to logout');
     }
   }
 

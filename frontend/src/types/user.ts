@@ -23,13 +23,13 @@ export interface User {
   username: string;
   email: string;
   fullName: string;
-  role: UserRole;
-  status: UserStatus;
   isAdmin: boolean;
-  twoFactorEnabled: boolean;
-  isBiometricsEnabled: boolean;
-  requiresAdditionalAuth: boolean;
+  status: 'active' | 'inactive';
   lastActive: string;
   createdAt: string;
   updatedAt: string;
+  enabledAuthMethods?: string[];
+  requiresAdditionalAuth?: boolean;
+  twoFactorEnabled?: boolean;
+  isBiometricsEnabled?: boolean;
 } 

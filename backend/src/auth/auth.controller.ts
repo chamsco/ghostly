@@ -379,4 +379,39 @@ export class AuthController {
       throw new InternalServerErrorException('Failed to fetch devices');
     }
   }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req: RequestWithUser) {
+    try {
+      // Get the device ID from the request
+      const deviceId = req.user.deviceId;
+      
+      // Log the logout attempt
+      console.log('🔄 Logout attempt:', {
+        userId: req.user.id,
+        deviceId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Remove the device and its refresh token
+      await this.authService.logout(req.user.id, deviceId);
+
+      console.log('✅ Logout successful:', {
+        userId: req.user.id,
+        deviceId,
+        timestamp: new Date().toISOString()
+      });
+
+      return { message: 'Logged out successfully' };
+    } catch (error) {
+      console.error('❌ Logout error:', {
+        error,
+        userId: req.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      throw new InternalServerErrorException('Logout failed');
+    }
+  }
 } 
