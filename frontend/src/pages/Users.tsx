@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, User as UserIcon, Shield, MoreVertical } from 'lucide-react';
-import { baseApi } from '@/lib/axios';
+//import { projectsApi } from '@/services/api.service';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,42 @@ import { User } from '@/types/user';
 import { useAuth } from '@/contexts/auth.context';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+// Create a users API instance
+const usersApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add request interceptor for auth token
+usersApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling
+usersApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('accessToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -36,7 +72,7 @@ export function Users() {
     const fetchUsers = async () => {
       try {
         setIsLoading(true);
-        const response = await baseApi.get<User[]>('/users');
+        const response = await usersApi.get<User[]>('/users');
         setUsers(response.data);
       } catch (err) {
         console.error('Failed to fetch users:', err);
@@ -69,7 +105,7 @@ export function Users() {
   const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await baseApi.patch(`/users/${userId}/status`, { status: newStatus });
+      await usersApi.patch(`/users/${userId}/status`, { status: newStatus });
       
       setUsers(prevUsers => 
         prevUsers.map(user => 
@@ -93,7 +129,7 @@ export function Users() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      await baseApi.delete(`/users/${userId}`);
+      await usersApi.delete(`/users/${userId}`);
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
       
       toast({

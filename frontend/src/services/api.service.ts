@@ -28,7 +28,7 @@ const authApiInstance = axios.create({
 });
 
 // Create axios instance for protected endpoints
-const api = axios.create({
+export const api = axios.create({
   baseURL: BASE_URL ? `${BASE_URL}/api` : '/api',
   timeout: API_TIMEOUT,
   headers: {
