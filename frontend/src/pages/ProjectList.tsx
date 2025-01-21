@@ -9,7 +9,7 @@
  * - Loading and error states
  * - Auto-refresh project list
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useProjects } from '@/contexts/projects.context';
@@ -19,10 +19,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ProjectList() {
   const navigate = useNavigate();
   const { projects, loading, error, refreshProjects } = useProjects();
+  const [selectedType, setSelectedType] = useState<ProjectType | 'all'>('all');
 
   // Refresh projects every 30 seconds
   useEffect(() => {
@@ -52,14 +54,12 @@ export default function ProjectList() {
   // Get project type label
   const getTypeLabel = (type: ProjectType) => {
     switch (type) {
-      case ProjectType.SUPABASE:
-        return 'Supabase';
-      case ProjectType.POCKETBASE:
-        return 'PocketBase';
-      case ProjectType.WEBSITE:
-        return 'Website';
+      case ProjectType.DATABASE:
+        return 'Database';
       case ProjectType.SERVICE:
         return 'Service';
+      case ProjectType.WEBSITE:
+        return 'Website';
       default:
         return type;
     }
@@ -100,6 +100,20 @@ export default function ProjectList() {
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
+      </div>
+
+      <div className="mb-4">
+        <Select value={selectedType} onValueChange={(value: ProjectType | 'all') => setSelectedType(value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value={ProjectType.DATABASE}>Database</SelectItem>
+            <SelectItem value={ProjectType.SERVICE}>Service</SelectItem>
+            <SelectItem value={ProjectType.WEBSITE}>Website</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (

@@ -17,7 +17,7 @@ import { Project, ProjectStatus } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+//import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -217,22 +217,17 @@ export default function ProjectDetail() {
         </CardContent>
       </Card>
 
-      {project.environmentVariables && Object.keys(project.environmentVariables).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Environment Variables</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(project.environmentVariables).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-center p-2 bg-secondary rounded">
-                  <span className="font-mono">{key}</span>
-                  <Badge variant="outline">{value}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {project.environmentVariables && project.environmentVariables.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold mb-2">Environment Variables</h3>
+          <div className="space-y-2">
+            {project.environmentVariables.map(env => (
+              <div key={env.key} className="flex justify-between items-center p-2 bg-secondary rounded">
+                <span className="font-mono">{env.key}={env.isSecret ? '********' : env.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
