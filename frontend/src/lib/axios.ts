@@ -11,14 +11,13 @@
  * - Request/response logging in development
  */
 
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { 
   CreateUserDto, 
   AuthResponse, 
   TwoFactorResponse, 
   BiometricRegistrationOptions 
 } from '@/types/auth';
-// import type {  AxiosResponse, AxiosInstance } from 'axios'
 import type { AxiosRequestConfig } from 'axios';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto } from '@/types/project';
@@ -37,8 +36,8 @@ interface CustomAxiosRequestConfig extends AxiosRequestConfig {
  * Environment-specific configuration
  */
 const config = {
-  // API base URL from environment variables
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  // API base URL - use environment variable or fallback to proxy path
+  baseURL: import.meta.env.VITE_API_URL || '',
   
   // Request timeout in milliseconds
   timeout: 10000,
@@ -53,8 +52,17 @@ const config = {
 /**
  * Creates a configured axios instance
  */
-export const api = axios.create({
-  baseURL: '/api',
+export const api: AxiosInstance = axios.create({
+  baseURL: config.baseURL || '/api',
+  timeout: config.timeout,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Create auth API instance
+export const authInstance: AxiosInstance = axios.create({
+  baseURL: config.baseURL ? `${config.baseURL}/auth` : '/auth',
   timeout: config.timeout,
   headers: {
     'Content-Type': 'application/json'
@@ -62,119 +70,117 @@ export const api = axios.create({
 });
 
 /**
- * Request interceptor
- * - Adds authentication token
- * - Logs requests in development
- * - Handles request retries
+ * Request interceptor configuration
  */
-api.interceptors.request.use(
-  (config) => {
-    // Add timestamp for request timing
-    const requestTimestamp = Date.now();
-    (config as CustomAxiosRequestConfig).metadata = { requestTimestamp };
+const configureInterceptors = (instance: AxiosInstance) => {
+  instance.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+      // Add timestamp for request timing
+      const requestTimestamp = Date.now();
+      (config as CustomAxiosRequestConfig).metadata = { requestTimestamp };
 
-    // Log requests in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🚀 Request:', {
-        method: config.method?.toUpperCase(),
-        url: config.url,
-        data: config.data,
-        headers: config.headers
-      });
-    }
-
-    const token = localStorage.getItem('accessToken');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-/**
- * Response interceptor
- * - Handles response timing
- * - Logs responses in development
- * - Implements retry logic for failed requests
- * - Handles common error cases
- */
-api.interceptors.response.use(
-  (response) => {
-    // Calculate request duration
-    const config = response.config as CustomAxiosRequestConfig;
-    const requestTimestamp = config.metadata?.requestTimestamp;
-    const responseTimestamp = Date.now();
-    const duration = requestTimestamp ? responseTimestamp - requestTimestamp : 0;
-
-    // Log responses in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Response:', {
-        status: response.status,
-        duration: `${duration}ms`,
-        data: response.data,
-        headers: response.headers
-      });
-    }
-
-    return response;
-  },
-  async (error) => {
-    if (!error.config) {
-      return Promise.reject(error);
-    }
-
-    const config = error.config as CustomAxiosRequestConfig;
-
-    // Skip retry for specific status codes
-    if (error.response?.status && [400, 401, 403, 404].includes(error.response.status)) {
-      return Promise.reject(error);
-    }
-
-    // Implement retry logic
-    const retryCount = config.retryCount ?? 0;
-    const maxRetries = config.maxRetries ?? 3;
-    const retryDelay = config.retryDelay ?? 1000;
-
-    if (retryCount < maxRetries) {
-      config.retryCount = retryCount + 1;
-
-      // Exponential backoff
-      const delay = retryCount * retryDelay;
-      await new Promise(resolve => setTimeout(resolve, delay));
-
-      // Log retry attempt
+      // Log requests in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Retrying request:', {
-          attempt: config.retryCount,
+        console.log('🚀 Request:', {
+          method: config.method?.toUpperCase(),
           url: config.url,
-          method: config.method
+          data: config.data,
+          headers: config.headers
         });
       }
 
-      return api(config);
-    }
+      const token = localStorage.getItem('accessToken');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
 
-    // Log errors in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('❌ Request failed:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        error: error.message
-      });
+      return config;
+    },
+    (error: AxiosError) => {
+      return Promise.reject(error);
     }
+  );
 
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
+  instance.interceptors.response.use(
+    (response: AxiosResponse) => {
+      // Calculate request duration
+      const config = response.config as CustomAxiosRequestConfig;
+      const requestTimestamp = config.metadata?.requestTimestamp;
+      const responseTimestamp = Date.now();
+      const duration = requestTimestamp ? responseTimestamp - requestTimestamp : 0;
+
+      // Log responses in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Response:', {
+          status: response.status,
+          duration: `${duration}ms`,
+          data: response.data,
+          headers: response.headers
+        });
+      }
+
+      return response;
+    },
+    async (error: AxiosError) => {
+      if (!error.config) {
+        return Promise.reject(error);
+      }
+
+      const config = error.config as CustomAxiosRequestConfig;
+
+      // Skip retry for specific status codes
+      if (error.response?.status && [400, 401, 403, 404].includes(error.response.status)) {
+        if (error.response.status === 401) {
+          // Clear token and redirect only if not already on login page
+          localStorage.removeItem('accessToken');
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+        }
+        return Promise.reject(error);
+      }
+
+      // Implement retry logic
+      const retryCount = config.retryCount ?? 0;
+      const maxRetries = config.maxRetries ?? config.maxRetries ?? 3;
+      const retryDelay = config.retryDelay ?? config.retryDelay ?? 1000;
+
+      if (retryCount < maxRetries) {
+        config.retryCount = retryCount + 1;
+
+        // Exponential backoff
+        const delay = retryCount * retryDelay;
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Log retry attempt
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Retrying request:', {
+            attempt: config.retryCount,
+            url: config.url,
+            method: config.method
+          });
+        }
+
+        return instance(config);
+      }
+
+      // Log errors in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Request failed:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          error: error.message
+        });
+      }
+
+      return Promise.reject(error);
     }
+  );
+};
 
-    return Promise.reject(error);
-  }
-);
+// Configure interceptors for both instances
+configureInterceptors(api);
+configureInterceptors(authInstance);
 
 /**
  * Error handler for common HTTP errors
