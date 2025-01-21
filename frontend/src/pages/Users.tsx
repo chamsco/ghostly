@@ -56,35 +56,58 @@ export function Users() {
   }, [user, navigate, toast]);
 
   const handleAddUser = () => {
-    // TODO: Implement add user functionality
-    toast({
-      title: "Coming Soon",
-      description: "Add user functionality will be available soon.",
-    });
+    navigate('/register', { state: { isAdminCreating: true } });
   };
 
   const handleEditUser = (userId: string) => {
-    // TODO: Implement edit user functionality
-    toast({
-      title: "Coming Soon",
-      description: "Edit user functionality will be available soon.",
-    });
+    const userToEdit = users.find(u => u.id === userId);
+    if (!userToEdit) return;
+
+    navigate(`/users/${userId}/edit`, { state: { user: userToEdit } });
   };
 
   const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
-    // TODO: Implement toggle user status functionality
-    toast({
-      title: "Coming Soon",
-      description: "User status toggle functionality will be available soon.",
-    });
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      await baseApi.patch(`/users/${userId}/status`, { status: newStatus });
+      
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId ? { ...user, status: newStatus } : user
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`,
+      });
+    } catch (err) {
+      console.error('Failed to toggle user status:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update user status. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    // TODO: Implement delete user functionality
-    toast({
-      title: "Coming Soon",
-      description: "Delete user functionality will be available soon.",
-    });
+    try {
+      await baseApi.delete(`/users/${userId}`);
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Success",
+        description: "User deleted successfully.",
+      });
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (!user?.isAdmin) {
