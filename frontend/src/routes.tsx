@@ -22,6 +22,7 @@ import { AppProviders } from '@/providers';
 
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
+import { Onboarding } from '@/pages/Onboarding';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import { Dashboard } from '@/pages/Dashboard';
@@ -77,6 +78,14 @@ export const router = createBrowserRouter([
     element: (
       <AppProviders>
         <Register />
+      </AppProviders>
+    )
+  },
+  {
+    path: 'onboarding',
+    element: (
+      <AppProviders>
+        <Onboarding />
       </AppProviders>
     )
   },
