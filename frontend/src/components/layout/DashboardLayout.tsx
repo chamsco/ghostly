@@ -26,7 +26,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth.context';
-import { useTheme } from '@/contexts/theme.context';
+import { useTheme } from '@/components/theme-provider';
 import {
   LayoutDashboard,
   Settings,

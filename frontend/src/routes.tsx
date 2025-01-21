@@ -41,14 +41,19 @@ export const queryClient = new QueryClient({
   }
 });
 
+// Create a layout component that wraps the DashboardLayout with AppProviders
+function ProtectedLayout() {
+  return (
+    <AppProviders>
+      <DashboardLayout />
+    </AppProviders>
+  );
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: (
-      <AppProviders>
-        <DashboardLayout />
-      </AppProviders>
-    ),
+    element: <ProtectedLayout />,
     errorElement: <ProjectErrorBoundary />,
     children: [
       {
