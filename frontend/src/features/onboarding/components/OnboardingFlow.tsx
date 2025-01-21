@@ -1,55 +1,115 @@
+/**
+ * OnboardingFlow Component
+ * 
+ * A multi-step onboarding flow component that guides new users through initial setup.
+ * Features:
+ * - Step-by-step wizard interface
+ * - Progress tracking
+ * - Responsive design
+ * - Customizable steps and content
+ * - Persistent progress
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFirstLogin } from '@/hooks/useFirstLogin';
 
-interface Step {
+/**
+ * Interface for individual onboarding step configuration
+ */
+interface OnboardingStep {
+  /** Unique identifier for the step */
+  id: string;
+  /** Title displayed at the top of the step */
   title: string;
-  description: string;
-  action?: () => Promise<void>;
+  /** Main content/description for the step */
+  content: string;
+  /** Optional action button text */
   actionLabel?: string;
+  /** Optional action handler */
+  onAction?: () => void | Promise<void>;
 }
 
-const steps: Step[] = [
+/**
+ * Predefined onboarding steps configuration
+ * Each step represents a key feature or setup requirement
+ */
+const steps: OnboardingStep[] = [
   {
+    id: 'welcome',
     title: 'Welcome to Squadron',
-    description: 'Let\'s get you set up with your development environment.',
+    content: 'Squadron helps you manage your servers and applications with ease. Let\'s get you started with a quick tour of the main features.',
   },
   {
-    title: 'Two-Factor Authentication',
-    description: 'Secure your account with 2FA for enhanced security.',
-    action: async () => {
-      // Navigate to 2FA setup
-      window.location.href = '/security/2fa';
-    },
-    actionLabel: 'Set up 2FA',
-  },
-  {
+    id: 'projects',
     title: 'Create Your First Project',
-    description: 'Start by creating a new project to manage your services.',
-    action: async () => {
+    content: 'Projects help you organize your servers and applications. You can create multiple projects for different environments or clients.',
+    actionLabel: 'Create Project',
+    onAction: () => {
       // Navigate to project creation
       window.location.href = '/projects/new';
-    },
-    actionLabel: 'Create Project',
+    }
   },
+  {
+    id: 'security',
+    title: 'Security First',
+    content: 'We recommend enabling two-factor authentication (2FA) to secure your account. You can do this in your profile settings.',
+    actionLabel: 'Enable 2FA',
+    onAction: () => {
+      // Navigate to 2FA setup
+      window.location.href = '/profile/security';
+    }
+  }
 ];
 
+/**
+ * OnboardingFlow component displays a step-by-step guide for new users
+ * 
+ * @returns JSX.Element The onboarding flow component
+ * 
+ * @example
+ * <OnboardingFlow />
+ */
 export function OnboardingFlow() {
+  // Track current step index
   const [currentStep, setCurrentStep] = useState(0);
+  const [, setIsFirstLogin] = useFirstLogin();
   const navigate = useNavigate();
 
+  /**
+   * Handles navigation to the next step or completes onboarding
+   */
   const handleNext = async () => {
     const step = steps[currentStep];
-    if (step.action) {
-      await step.action();
-    } else if (currentStep < steps.length - 1) {
+    
+    // Execute step action if defined
+    if (step.onAction) {
+      await step.onAction();
+    }
+
+    if (currentStep < steps.length - 1) {
+      // Move to next step
       setCurrentStep(prev => prev + 1);
     } else {
+      // Complete onboarding
+      setIsFirstLogin(false);
       navigate('/dashboard');
     }
   };
+
+  /**
+   * Handles skipping the onboarding flow
+   */
+  const handleSkip = () => {
+    setIsFirstLogin(false);
+    navigate('/dashboard');
+  };
+
+  // Get current step data
+  const step = steps[currentStep];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -63,24 +123,22 @@ export function OnboardingFlow() {
         >
           <Card className="w-[400px]">
             <CardHeader>
-              <CardTitle>{steps[currentStep].title}</CardTitle>
+              <CardTitle>{step.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-500 dark:text-gray-400">
-                {steps[currentStep].description}
+                {step.content}
               </p>
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button
                 variant="outline"
-                onClick={() => setCurrentStep(prev => prev - 1)}
-                disabled={currentStep === 0}
+                onClick={handleSkip}
               >
-                Back
+                Skip
               </Button>
               <Button onClick={handleNext}>
-                {steps[currentStep].actionLabel || 
-                  (currentStep === steps.length - 1 ? 'Finish' : 'Next')}
+                {currentStep === steps.length - 1 ? 'Finish' : (step.actionLabel || 'Next')}
               </Button>
             </CardFooter>
           </Card>

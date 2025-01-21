@@ -1,35 +1,38 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+/**
+ * Protected Route Component
+ * 
+ * Higher-order component that protects routes by:
+ * - Checking authentication status
+ * - Redirecting unauthenticated users to login
+ * - Preserving attempted URL for post-login redirect
+ * - Handling loading states during auth check
+ * 
+ * Example usage:
+ * ```tsx
+ * <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+ * ```
+ */
+import { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth.context';
-import { useToast } from '@/components/ui/use-toast';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
-export function ProtectedRoute() {
-  const { isAuthenticated, isLoading, authStatus, authError } = useAuth();
+interface Props {
+  children: ReactNode;
+}
+
+export default function ProtectedRoute({ children }: Props) {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  const { toast } = useToast();
 
-  // Show loading state while checking authentication
-  if (isLoading || authStatus === 'LOADING') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+  if (loading) {
+    return <LoadingScreen message="Checking authentication..." />;
   }
 
-  // Handle error states
-  if (authStatus === 'ERROR' && authError) {
-    toast({
-      title: "Authentication Error",
-      description: authError.message,
-      variant: "destructive",
-    });
+  if (!isAuthenticated) {
+    // Save the attempted URL for redirecting after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Redirect to login if not authenticated, preserving the intended destination
-  if (!isAuthenticated || authStatus === 'UNAUTHENTICATED') {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  return <Outlet />;
+  return <>{children}</>;
 } 

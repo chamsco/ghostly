@@ -1,15 +1,14 @@
 /**
- * Admin Route Component
+ * Public Route Component
  * 
- * Higher-order component that protects admin-only routes by:
+ * Higher-order component that protects public routes by:
  * - Checking authentication status
- * - Verifying admin privileges
- * - Redirecting unauthorized users to dashboard
+ * - Redirecting authenticated users to dashboard
  * - Handling loading states during auth check
  * 
  * Example usage:
  * ```tsx
- * <Route path="/users" element={<AdminRoute><Users /></AdminRoute>} />
+ * <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
  * ```
  */
 import { ReactNode } from 'react';
@@ -21,16 +20,16 @@ interface Props {
   children: ReactNode;
 }
 
-export default function AdminRoute({ children }: Props) {
-  const { isAuthenticated, user, loading } = useAuth();
-
+export function PublicRoute({ children }: Props) {
+  const { isAuthenticated, loading } = useAuth();
+  
   if (loading) {
-    return <LoadingScreen message="Checking authorization..." />;
+    return <LoadingScreen message="Checking authentication..." />;
   }
-
-  if (!isAuthenticated || !user?.isAdmin) {
+  
+  if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-
+  
   return <>{children}</>;
 } 
