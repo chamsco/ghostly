@@ -24,26 +24,23 @@
  */
 
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth.context';
 import { useTheme } from '@/contexts/theme.context';
 import {
   LayoutDashboard,
-  Users,
   Settings,
+  Users,
+
   LogOut,
   Menu,
   X,
   Sun,
   Moon,
-  User,
-  Laptop
+  User
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-
-interface Props {
-  children: React.ReactNode;
-}
+//import { Server, Shield } from 'lucide-react';
 
 /**
  * Navigation item configuration
@@ -83,7 +80,7 @@ const navItems: NavItem[] = [
   }
 ];
 
-export function DashboardLayout({ children }: Props) {
+export function DashboardLayout() {
   // State and hooks
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
@@ -201,7 +198,7 @@ export function DashboardLayout({ children }: Props) {
       {/* Main Content */}
       <div className="p-4 md:ml-64">
         <div className="mt-14">
-          {children}
+          <Outlet />
         </div>
       </div>
     </div>

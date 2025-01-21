@@ -2,38 +2,29 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, User, Shield, MoreVertical } from 'lucide-react';
-import { api } from '@/lib/axios';
+import { baseApi } from '@/lib/axios';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  fullName: string;
-  role: 'admin' | 'user';
-  status: 'active' | 'inactive';
-  lastActive: string;
-}
+import { User as UserType } from '@/types/user';
 
 export function Users() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        setLoading(true);
-        const response = await api.get('/users');
+        setIsLoading(true);
+        const response = await baseApi.get<UserType[]>('/users');
         setUsers(response.data);
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -108,7 +99,7 @@ export function Users() {
           </Card>
         ))}
 
-        {users.length === 0 && !loading && (
+        {users.length === 0 && !isLoading && (
           <div className="col-span-3 flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
             <div className="rounded-lg bg-primary/10 p-3">
               <User className="h-6 w-6 text-primary" />

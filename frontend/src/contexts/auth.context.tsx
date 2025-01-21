@@ -15,7 +15,9 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, CreateUserDto } from '@/types/user';
+import { User, UserStatus } from '@/types/user';
+import { CreateUserDto, BiometricRegistrationOptions } from '@/types/auth';
+//import {BiometricAuthenticationOptions} from '@/types/auth';
 import { authApi } from '@/services/api.service';
 
 interface AuthContextType {
@@ -26,6 +28,17 @@ interface AuthContextType {
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: CreateUserDto) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
+  updatePassword: (oldPassword: string, newPassword: string) => Promise<void>;
+  updateAuthSettings: (settings: { requiresAdditionalAuth: boolean }) => Promise<void>;
+  setup2FA: () => Promise<{ secret: string; qrCode: string }>;
+  verify2FA: (token: string) => Promise<void>;
+  enable2FA: () => Promise<void>;
+  disable2FA: () => Promise<void>;
+  is2FAEnabled: boolean;
+  setupBiometrics: () => Promise<BiometricRegistrationOptions>;
+  disableBiometrics: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,9 +79,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { access_token, user: userData } = await authApi.login(username, password, rememberMe || false);
       localStorage.setItem('accessToken', access_token);
-      setUser(userData);
+      setUser({
+        ...userData,
+        status: UserStatus.ACTIVE,
+        isAdmin: userData.role === 'admin',
+        lastActive: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
 
-      // Navigate to the dashboard or intended destination
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -102,12 +121,152 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { access_token, user: userData } = await authApi.register(data);
       localStorage.setItem('accessToken', access_token);
-      setUser(userData);
+      setUser({
+        ...userData,
+        status: UserStatus.ACTIVE,
+        isAdmin: userData.role === 'admin',
+        lastActive: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
 
-      // Navigate to onboarding or dashboard
       navigate('/onboarding');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.requestPasswordReset(email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password reset request failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (token: string, password: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.resetPassword(token, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password reset failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePassword = async (oldPassword: string, newPassword: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.updatePassword(oldPassword, newPassword);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password update failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateAuthSettings = async (settings: { requiresAdditionalAuth: boolean }) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.updateAuthSettings(settings);
+      setUser(prev => prev ? { ...prev, requiresAdditionalAuth: settings.requiresAdditionalAuth } : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Settings update failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setup2FA = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      return await authApi.setup2FA();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '2FA setup failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verify2FA = async (token: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.verify2FA(token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '2FA verification failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enable2FA = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.enable2FA();
+      setUser(prev => prev ? { ...prev, twoFactorEnabled: true } : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '2FA enable failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disable2FA = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.disable2FA();
+      setUser(prev => prev ? { ...prev, twoFactorEnabled: false } : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '2FA disable failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setupBiometrics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      return await authApi.setupBiometrics();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Biometrics setup failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disableBiometrics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await authApi.disableBiometrics();
+      setUser(prev => prev ? { ...prev, isBiometricsEnabled: false } : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Biometrics disable failed');
       throw err;
     } finally {
       setLoading(false);
@@ -122,7 +281,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       login,
       logout,
-      register
+      register,
+      requestPasswordReset,
+      resetPassword,
+      updatePassword,
+      updateAuthSettings,
+      setup2FA,
+      verify2FA,
+      enable2FA,
+      disable2FA,
+      is2FAEnabled: user?.twoFactorEnabled ?? false,
+      setupBiometrics,
+      disableBiometrics
     }}>
       {children}
     </AuthContext.Provider>

@@ -44,10 +44,9 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
       const project = await projectsApi.create(data);
       setProjects(prev => [...prev, project]);
       return project;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create project';
-      setError(message);
-      throw new Error(message);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw error;
     }
   };
 

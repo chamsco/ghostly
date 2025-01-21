@@ -5,7 +5,6 @@
  * - User: Main user interface with all properties
  * - UserRole: Enum of possible user roles
  * - UserStatus: Enum of possible user statuses
- * - CreateUserDto: Data required to create a new user
  */
 
 export enum UserRole {
@@ -30,14 +29,7 @@ export interface User {
   twoFactorEnabled: boolean;
   isBiometricsEnabled: boolean;
   requiresAdditionalAuth: boolean;
+  lastActive: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateUserDto {
-  username: string;
-  email: string;
-  password: string;
-  fullName: string;
-  role?: UserRole;
 } 

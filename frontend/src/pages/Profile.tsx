@@ -8,6 +8,18 @@ import { User, Key, Shield, Fingerprint } from 'lucide-react';
 export function Profile() {
   const { user, enable2FA, disable2FA, setupBiometrics, disableBiometrics } = useAuth();
 
+  const handleTwoFactorToggle = async () => {
+    try {
+      if (user?.twoFactorEnabled) {
+        await disable2FA();
+      } else {
+        await enable2FA();
+      }
+    } catch (error) {
+      console.error('Failed to toggle 2FA:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Profile Settings</h1>
@@ -69,7 +81,7 @@ export function Profile() {
               </div>
               <Button 
                 variant="outline"
-                onClick={() => user?.twoFactorEnabled ? disable2FA() : enable2FA('123456')}
+                onClick={handleTwoFactorToggle}
               >
                 {user?.twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
               </Button>

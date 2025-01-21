@@ -14,86 +14,65 @@
  * - Protection (auth/admin guards)
  */
 import { createBrowserRouter } from 'react-router-dom';
+import { QueryClient } from '@tanstack/react-query';
+
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ProjectErrorBoundary } from '@/components/ProjectErrorBoundary';
+
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import { Dashboard } from '@/pages/Dashboard';
-import { Projects } from '@/pages/Projects';
+import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
-import { Users as AdminDashboard } from '@/pages/Users';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { PublicRoute } from '@/components/PublicRoute';
-import { RouteTransition } from '@/components/RouteTransition';
-import AdminRoute from '@/components/AdminRoute';
+
+// Configure React Query client with custom defaults
+// - Disable automatic retries on failed requests
+// - Disable automatic refetching when window regains focus
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
-    element: (
-      <RouteTransition>
-        <PublicRoute>
-          <Login />
-        </PublicRoute>
-      </RouteTransition>
-    ),
+    path: '/',
+    element: <DashboardLayout />,
+    errorElement: <ProjectErrorBoundary />,
+    children: [
+      {
+        path: 'dashboard',
+        element: <Dashboard />
+      },
+      {
+        path: 'profile',
+        element: <Profile />
+      },
+      {
+        path: 'settings',
+        element: <Settings />
+      }
+    ]
   },
   {
-    path: '/register',
-    element: (
-      <RouteTransition>
-        <PublicRoute>
-          <Register />
-        </PublicRoute>
-      </RouteTransition>
-    ),
+    path: 'login',
+    element: <Login />
   },
   {
-    path: '/dashboard',
-    element: (
-      <RouteTransition>
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      </RouteTransition>
-    ),
+    path: 'register',
+    element: <Register />
   },
   {
-    path: '/projects',
-    element: (
-      <RouteTransition>
-        <ProtectedRoute>
-          <Projects />
-        </ProtectedRoute>
-      </RouteTransition>
-    ),
+    path: 'forgot-password',
+    element: <ForgotPassword />
   },
   {
-    path: '/settings',
-    element: (
-      <RouteTransition>
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      </RouteTransition>
-    ),
-  },
-  {
-    path: '/admin',
-    element: (
-      <RouteTransition>
-        <AdminRoute>
-          <AdminDashboard />
-        </AdminRoute>
-      </RouteTransition>
-    ),
-  },
-  {
-    path: '*',
-    element: (
-      <RouteTransition>
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      </RouteTransition>
-    ),
-  },
+    path: 'reset-password',
+    element: <ResetPassword />
+  }
 ]); 

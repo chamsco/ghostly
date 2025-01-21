@@ -26,7 +26,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+//import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 
 interface Props {

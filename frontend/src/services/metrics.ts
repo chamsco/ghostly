@@ -10,7 +10,7 @@
  * for display in the dashboard and monitoring components.
  */
 
-import { api } from '@/lib/axios';
+import { baseApi } from '@/lib/axios';
 
 /**
  * System metrics data structure
@@ -21,24 +21,23 @@ export interface SystemMetrics {
     usage: number;        // CPU usage percentage
     cores: number;        // Number of CPU cores
     temperature: number;  // CPU temperature in Celsius
+    speed: number;         // CPU speed in GHz
   };
   memory: {
     total: number;       // Total memory in bytes
     used: number;        // Used memory in bytes
     free: number;        // Free memory in bytes
-    usagePercentage: number;  // Memory usage percentage
+    usagePercentage: number;
   };
   disk: {
     total: number;       // Total disk space in bytes
     used: number;        // Used disk space in bytes
     free: number;        // Free disk space in bytes
-    usagePercentage: number;  // Disk usage percentage
+    usagePercentage: number;
   };
   network: {
-    bytesReceived: number;    // Total bytes received
-    bytesSent: number;        // Total bytes sent
-    packetsReceived: number;  // Total packets received
-    packetsSent: number;      // Total packets sent
+    upload: number;      // Total upload bytes
+    download: number;    // Total download bytes
   };
   timestamp: Date;      // Timestamp of the metrics reading
 }
@@ -48,8 +47,9 @@ export interface SystemMetrics {
  */
 export interface MetricsDataPoint {
   timestamp: Date;
-  value: number;
-  type: 'cpu' | 'memory' | 'disk' | 'network';
+  cpu: number;
+  memory: number;
+  disk: number;
 }
 
 /**
@@ -63,8 +63,18 @@ export type TimeRange = '1h' | '24h' | '7d' | '30d';
  * @throws Error if the metrics fetch fails
  */
 export async function getSystemMetrics(): Promise<SystemMetrics> {
-  const response = await api.get<SystemMetrics>('/metrics/system');
-  return response.data;
+  const response = await baseApi.get<SystemMetrics>('/metrics/system');
+  return {
+    ...response.data,
+    memory: {
+      ...response.data.memory,
+      usagePercentage: (response.data.memory.used / response.data.memory.total) * 100
+    },
+    disk: {
+      ...response.data.disk,
+      usagePercentage: (response.data.disk.used / response.data.disk.total) * 100
+    }
+  };
 }
 
 /**
@@ -74,7 +84,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
  * @throws Error if the historical metrics fetch fails
  */
 export async function getHistoricalMetrics(timeRange: TimeRange): Promise<MetricsDataPoint[]> {
-  const response = await api.get<MetricsDataPoint[]>(`/metrics/historical?timeRange=${timeRange}`);
+  const response = await baseApi.get<MetricsDataPoint[]>(`/metrics/historical?timeRange=${timeRange}`);
   return response.data;
 }
 
@@ -101,4 +111,26 @@ export function formatBytes(bytes: number, decimals = 2): string {
  */
 export function formatPercentage(value: number): string {
   return `${value.toFixed(1)}%`;
-} 
+}
+
+export const metricsService = {
+  async getSystemMetrics(): Promise<SystemMetrics> {
+    const response = await baseApi.get<SystemMetrics>('/metrics/system');
+    return {
+      ...response.data,
+      memory: {
+        ...response.data.memory,
+        usagePercentage: (response.data.memory.used / response.data.memory.total) * 100
+      },
+      disk: {
+        ...response.data.disk,
+        usagePercentage: (response.data.disk.used / response.data.disk.total) * 100
+      }
+    };
+  },
+
+  async getHistoricalMetrics(): Promise<MetricsDataPoint[]> {
+    const response = await baseApi.get<MetricsDataPoint[]>('/metrics/historical');
+    return response.data;
+  }
+}; 

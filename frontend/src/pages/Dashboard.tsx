@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Server, Cpu, HelpCircle, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/axios';
+import { baseApi } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { metricsService, SystemMetrics } from '@/services/metrics';
@@ -237,7 +237,7 @@ export function Dashboard() {
   const fetchDashboardStats = useCallback(() => {
     return fetchWithRetry(
       async () => {
-        const response = await api.get('/dashboard/stats');
+        const response = await baseApi.get('/dashboard/stats');
         return response.data;
       },
       setDashboardStats,

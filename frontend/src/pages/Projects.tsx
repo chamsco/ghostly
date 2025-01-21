@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Folder, Settings, MoreVertical } from 'lucide-react';
-import { api } from '@/lib/axios';
+import { Plus, Folder, Settings, MoreVertical, AlertCircle } from 'lucide-react';
+import { projectsApi } from '@/lib/axios';
+import type { Project } from '@/types/project';
+import { ProjectStatus } from '@/types/project';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,33 +12,55 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
-
 export function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        setLoading(true);
-        const response = await api.get('/projects');
-        setProjects(response.data);
-      } catch (error) {
-        console.error('Failed to fetch projects:', error);
+        setIsLoading(true);
+        setError(null); // Reset error state before fetching
+        const data = await projectsApi.getProjects();
+        setProjects(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch projects');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     fetchProjects();
   }, []);
+
+  const getStatusColor = (status: ProjectStatus) => {
+    switch (status) {
+      case ProjectStatus.RUNNING:
+        return 'text-green-500';
+      case ProjectStatus.STOPPED:
+        return 'text-yellow-500';
+      case ProjectStatus.FAILED:
+        return 'text-red-500';
+      default:
+        return 'text-gray-500';
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
+        <div className="rounded-full bg-red-100 p-3">
+          <AlertCircle className="h-6 w-6 text-red-600" />
+        </div>
+        <h3 className="text-lg font-semibold">Error Loading Projects</h3>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Button onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -58,7 +82,7 @@ export function Projects() {
                 </div>
                 <div>
                   <h3 className="font-semibold">{project.name}</h3>
-                  <p className="text-sm text-muted-foreground">{project.description}</p>
+                  <p className="text-sm text-muted-foreground">{project.type}</p>
                 </div>
               </div>
               <DropdownMenu>
@@ -80,10 +104,8 @@ export function Projects() {
             </div>
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm">
-                <span className={`capitalize ${
-                  project.status === 'active' ? 'text-green-500' : 'text-yellow-500'
-                }`}>
-                  {project.status}
+                <span className={`capitalize ${getStatusColor(project.status)}`}>
+                  {project.status.toLowerCase()}
                 </span>
                 <span className="text-muted-foreground">
                   Created {new Date(project.createdAt).toLocaleDateString()}
@@ -93,7 +115,7 @@ export function Projects() {
           </Card>
         ))}
 
-        {projects.length === 0 && !loading && (
+        {projects.length === 0 && !isLoading && !error && (
           <div className="col-span-3 flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
             <div className="rounded-lg bg-primary/10 p-3">
               <Folder className="h-6 w-6 text-primary" />
@@ -106,6 +128,15 @@ export function Projects() {
               <Plus className="mr-2 h-4 w-4" />
               New Project
             </Button>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="col-span-3 flex justify-center">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 w-32 bg-gray-200 rounded"></div>
+              <div className="h-8 w-48 bg-gray-200 rounded"></div>
+            </div>
           </div>
         )}
       </div>

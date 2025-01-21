@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Play, Square, Trash2 } from 'lucide-react';
-import { useProjects } from '@/contexts/projects.context';
+// import { useProjects } from '@/contexts/projects.context';
 import { Project, ProjectStatus } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { Button } from '@/components/ui/button';

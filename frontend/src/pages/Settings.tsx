@@ -37,9 +37,12 @@ export default function Settings() {
 
   const handleAuthSettingChange = async (checked: boolean) => {
     try {
-      await updateAuthSettings(checked);
+      setIsLoading(true);
+      await updateAuthSettings({ requiresAdditionalAuth: checked });
     } catch (error) {
-      console.error("Failed to update auth settings:", error);
+      console.error('Failed to update auth settings:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
