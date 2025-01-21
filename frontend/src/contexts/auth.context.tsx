@@ -19,6 +19,7 @@ import { User, UserStatus } from '@/types/user';
 import { CreateUserDto, BiometricRegistrationOptions } from '@/types/auth';
 //import {BiometricAuthenticationOptions} from '@/types/auth';
 import { authApi } from '@/services/api.service';
+import axios from 'axios';
 
 interface AuthContextType {
   user: User | null;
@@ -52,19 +53,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check auth status on mount
   useEffect(() => {
     const checkAuthStatus = async () => {
+      console.log('🔍 Checking authentication status...');
       try {
         const token = localStorage.getItem('accessToken');
+        console.log('📝 Token status:', token ? 'Found' : 'Not found');
+        
         if (!token) {
+          console.log('⚠️ No token found, setting loading to false');
           setLoading(false);
           return;
         }
 
+        console.log('🔄 Fetching current user data...');
         const userData = await authApi.getCurrentUser();
+        console.log('✅ User data retrieved:', { id: userData.id, username: userData.username });
         setUser(userData);
       } catch (err) {
+        console.error('❌ Auth check failed:', err);
         localStorage.removeItem('accessToken');
         setError(err instanceof Error ? err.message : 'Authentication failed');
+        
+        // Log additional error details
+        if (axios.isAxiosError(err)) {
+          console.error('🌐 API Error Details:', {
+            status: err.response?.status,
+            data: err.response?.data,
+            config: {
+              url: err.config?.url,
+              method: err.config?.method,
+              baseURL: err.config?.baseURL
+            }
+          });
+        }
       } finally {
+        console.log('🏁 Auth check completed');
         setLoading(false);
       }
     };
@@ -73,11 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string, rememberMe?: boolean) => {
+    console.log('🔐 Attempting login...', { username, rememberMe });
     try {
       setLoading(true);
       setError(null);
 
       const { access_token, user: userData } = await authApi.login(username, password, rememberMe || false);
+      console.log('✅ Login successful, setting token and user data');
       localStorage.setItem('accessToken', access_token);
       setUser({
         ...userData,
@@ -90,7 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       navigate('/dashboard');
     } catch (err) {
+      console.error('❌ Login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
+      
+      // Log additional error details
+      if (axios.isAxiosError(err)) {
+        console.error('🌐 API Error Details:', {
+          status: err.response?.status,
+          data: err.response?.data,
+          config: {
+            url: err.config?.url,
+            method: err.config?.method,
+            baseURL: err.config?.baseURL
+          }
+        });
+      }
+      
       throw err;
     } finally {
       setLoading(false);

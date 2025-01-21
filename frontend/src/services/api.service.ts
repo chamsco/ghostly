@@ -7,53 +7,109 @@
  * - Error handling
  * - Response transformation
  */
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto } from '@/types/project';
 
+// Get the base URL from environment or use default
+const BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_TIMEOUT = 10000; // 10 seconds
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL ? `${BASE_URL}/api` : '/api',
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Add request logging
+api.interceptors.request.use(
+  (config) => {
+    console.log('🚀 Outgoing Request:', {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers
+    });
 
-// Handle auth errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
+    const token = localStorage.getItem('accessToken');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Added auth token to request');
     }
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response logging and error handling
+api.interceptors.response.use(
+  (response) => {
+    console.log('✅ Response received:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
+  (error: AxiosError) => {
+    console.error('❌ Response Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      console.log('🚫 Authentication error detected, clearing token');
+      localStorage.removeItem('accessToken');
+      
+      // Only redirect if not already on login/register pages
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/login') && !currentPath.includes('/register')) {
+        console.log('↩️ Redirecting to login page');
+        window.location.href = '/login';
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
 export const authApi = {
   async login(username: string, password: string, rememberMe: boolean): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', {
-      username,
-      password,
-      rememberMe
-    });
-    return response.data;
+    console.log('🔐 Attempting login request');
+    try {
+      const response = await api.post<AuthResponse>('/auth/login', {
+        username,
+        password,
+        rememberMe
+      });
+      console.log('✅ Login successful');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      throw error;
+    }
   },
 
   async register(data: CreateUserDto): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', data);
-    return response.data;
+    console.log('📝 Attempting registration');
+    try {
+      const response = await api.post<AuthResponse>('/auth/register', data);
+      console.log('✅ Registration successful');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Registration failed:', error);
+      throw error;
+    }
   },
 
   async logout(): Promise<void> {
@@ -61,8 +117,15 @@ export const authApi = {
   },
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get<User>('/auth/me');
-    return response.data;
+    console.log('🔄 Fetching current user');
+    try {
+      const response = await api.get<User>('/auth/me');
+      console.log('✅ Current user fetched successfully');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Failed to fetch current user:', error);
+      throw error;
+    }
   },
 
   async requestPasswordReset(email: string): Promise<void> {
