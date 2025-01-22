@@ -23,11 +23,14 @@ import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useServers } from '@/hooks/use-servers';
 
 // Form validation schemas for each step
 const basicInfoSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters'),
-  description: z.string()
+  description: z.string(),
+  serverId: z.string().min(1, 'Please select a server')
 });
 
 const environmentSchema = z.object({
@@ -50,13 +53,15 @@ export function ProjectCreate() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [projectData, setProjectData] = useState<Partial<CreateProjectDto>>({});
+  const { servers, isLoading: serversLoading } = useServers();
 
   // Form for basic info (Step 1)
   const basicInfoForm = useForm<BasicInfoFormValues>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
       name: '',
-      description: ''
+      description: '',
+      serverId: ''
     }
   });
 
@@ -156,6 +161,56 @@ export function ProjectCreate() {
                   )}
                 />
 
+                <FormField
+                  control={basicInfoForm.control}
+                  name="serverId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Server</FormLabel>
+                      <FormControl>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <Button
+                            type="button"
+                            variant={field.value === 'localhost' ? 'default' : 'outline'}
+                            className="w-full h-24 flex flex-col gap-2"
+                            onClick={() => field.onChange('localhost')}
+                          >
+                            <span className="text-lg">Localhost</span>
+                            <span className="text-sm text-muted-foreground">127.0.0.1</span>
+                          </Button>
+                          
+                          {servers?.map((server) => (
+                            <Button
+                              key={server.id}
+                              type="button"
+                              variant={field.value === server.id ? 'default' : 'outline'}
+                              className="w-full h-24 flex flex-col gap-2"
+                              onClick={() => field.onChange(server.id)}
+                            >
+                              <span className="text-lg">{server.name}</span>
+                              <span className="text-sm text-muted-foreground">{server.host}</span>
+                            </Button>
+                          ))}
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-24 flex flex-col gap-2"
+                            onClick={() => navigate('/servers/create')}
+                          >
+                            <span className="text-lg">Add Server</span>
+                            <span className="text-sm text-muted-foreground">Configure a new server</span>
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Choose a server to deploy your project
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
@@ -164,7 +219,7 @@ export function ProjectCreate() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">Continue</Button>
+                  <Button type="submit" disabled={serversLoading}>Continue</Button>
                 </div>
               </form>
             </Form>
