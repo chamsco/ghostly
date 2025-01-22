@@ -14,7 +14,7 @@ export class Project {
   @Column()
   description: string;
 
-  @Column()
+  @Column({ nullable: true })
   serverId: string;
 
   @Column()

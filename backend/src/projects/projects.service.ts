@@ -48,7 +48,9 @@ export class ProjectsService {
 
     try {
       const project = this.projectsRepository.create({
-        ...createProjectDto,
+        name: createProjectDto.name,
+        description: createProjectDto.description,
+        serverId: createProjectDto.defaultServerId,
         ownerId: userId,
         status: ProjectStatus.CREATED
       });
@@ -56,42 +58,7 @@ export class ProjectsService {
       await queryRunner.manager.save(project);
 
       // Create default environments
-      const environments = [
-        {
-          name: 'development',
-          type: EnvironmentType.DEV,
-          variables: [
-            {
-              key: 'NODE_ENV',
-              value: 'development',
-              isSecret: false
-            },
-            {
-              key: 'PORT',
-              value: '3000',
-              isSecret: false
-            }
-          ]
-        },
-        {
-          name: 'production',
-          type: EnvironmentType.PROD,
-          variables: [
-            {
-              key: 'NODE_ENV',
-              value: 'production',
-              isSecret: false
-            },
-            {
-              key: 'PORT',
-              value: '3000',
-              isSecret: false
-            }
-          ]
-        }
-      ];
-
-      for (const envData of environments) {
+      for (const envData of createProjectDto.environments) {
         const environment = this.environmentsRepository.create({
           ...envData,
           project
@@ -100,18 +67,19 @@ export class ProjectsService {
         await queryRunner.manager.save(environment);
 
         // Create environment variables
-        for (const varData of envData.variables) {
-          const envVar = this.environmentVariablesRepository.create({
-            ...varData,
-            environment
-          });
+        if (envData.variables) {
+          for (const varData of envData.variables) {
+            const envVar = this.environmentVariablesRepository.create({
+              ...varData,
+              environment
+            });
 
-          await queryRunner.manager.save(envVar);
+            await queryRunner.manager.save(envVar);
+          }
         }
       }
 
       await queryRunner.commitTransaction();
-
       return this.findOne(project.id);
     } catch (error) {
       await queryRunner.rollbackTransaction();
