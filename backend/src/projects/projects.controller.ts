@@ -1,13 +1,16 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, UnauthorizedException, ConflictException, InternalServerErrorException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
-import { ProjectStatus } from './types/project.types';
+import { ProjectStatus, ProjectType } from './types/project.types';
 import { Resource } from './entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateResourceDto } from './dto/create-resource.dto';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
+import { EnvTemplateRequestDto, EnvTemplateResponseDto } from './dto/env-template.dto';
+import { EnvTemplateService } from './services/env-template.service';
 import { Request } from 'express';
 
 interface RequestWithUser extends Request {
@@ -19,7 +22,10 @@ interface RequestWithUser extends Request {
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly envTemplateService: EnvTemplateService
+  ) {}
 
   @Get()
   async getAllProjects(@Req() req: RequestWithUser): Promise<Project[]> {
@@ -246,6 +252,32 @@ export class ProjectsController {
         throw error;
       }
       throw new InternalServerErrorException('Failed to delete environment');
+    }
+  }
+
+  @Post('env-templates')
+  async getEnvTemplate(@Body() request: EnvTemplateRequestDto): Promise<EnvTemplateResponseDto> {
+    try {
+      return this.envTemplateService.getTemplate(request.projectType);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to get environment template');
+    }
+  }
+
+  @Post('env-file')
+  @UseInterceptors(FileInterceptor('file'))
+  async parseEnvFile(@UploadedFile() file: Express.Multer.File): Promise<{ variables: { key: string; value: string; isSecret: boolean; }[] }> {
+    try {
+      if (!file) {
+        throw new Error('No file uploaded');
+      }
+
+      const content = file.buffer.toString('utf-8');
+      const variables = this.envTemplateService.parseEnvFile(content);
+
+      return { variables };
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to parse environment file');
     }
   }
 } 
