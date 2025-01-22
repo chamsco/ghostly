@@ -1,13 +1,10 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
-import type { EnvironmentVariable } from '@/types/environment';
-import { generateUUID } from '@/utils/uuid';
 import { Checkbox } from '@/components/ui/checkbox';
 import { X } from 'lucide-react';
+import type { EnvironmentVariable } from '@/types/environment';
+import { generateUUID } from '@/utils/uuid';
 
 interface Props {
   value: EnvironmentVariable[];

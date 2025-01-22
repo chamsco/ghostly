@@ -48,10 +48,14 @@ const parseEnvFile = (content: string): EnvironmentVariable[] => {
     if (!key || !valueParts.length) return;
     
     const value = valueParts.join('=');
+    const now = new Date().toISOString();
     variables.push({
+      id: generateUUID(),
       key: key.trim(),
       value: value.trim(),
       isSecret: key.includes('SECRET') || key.includes('PASSWORD') || key.includes('KEY'),
+      createdAt: now,
+      updatedAt: now
     });
   });
   

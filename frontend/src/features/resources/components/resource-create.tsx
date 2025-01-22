@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { ResourceType, DatabaseType, ServiceType, Resource } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
+import { generateUUID } from '@/utils/uuid';
+import { useNavigate } from 'react-router-dom';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Resource name must be at least 3 characters'),
@@ -47,6 +49,7 @@ export function ResourceCreate({ projectId, onResourceCreated }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -59,26 +62,35 @@ export function ResourceCreate({ projectId, onResourceCreated }: Props) {
 
   const resourceType = form.watch('type');
 
-  const handleSubmit = async (values: FormValues) => {
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
+      const now = new Date().toISOString();
       const resource = await projectsApi.createResource(projectId, {
         ...values,
-        serverId: projectId // Use project ID as server ID or get it from props if needed
+        serverId: projectId,
+        environmentVariables: values.environmentVariables.map(v => ({
+          id: generateUUID(),
+          key: v.key,
+          value: v.value,
+          isSecret: v.isSecret,
+          createdAt: now,
+          updatedAt: now
+        }))
       });
       if (resource) {
-        onResourceCreated(resource);
-        setIsOpen(false);
         toast({
           title: "Success",
           description: "Resource created successfully"
         });
+        navigate(`/projects/${projectId}`);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Resource creation error:', error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to create resource",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to create resource"
       });
     } finally {
       setIsLoading(false);

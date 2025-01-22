@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Environment } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
+import { generateUUID } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Environment name must be at least 3 characters'),
@@ -40,11 +41,20 @@ export function EnvironmentCreate({ projectId, onEnvironmentCreated }: Props) {
     }
   });
 
-  const handleSubmit = async (values: FormValues) => {
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
+      const now = new Date().toISOString();
       const environment = await projectsApi.createEnvironment(projectId, {
-        ...values,
+        name: values.name,
+        variables: values.variables.map(v => ({
+          id: generateUUID(),
+          key: v.key,
+          value: v.value,
+          isSecret: v.isSecret,
+          createdAt: now,
+          updatedAt: now
+        })),
         resources: []
       });
       if (environment) {
