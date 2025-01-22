@@ -18,7 +18,13 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 3600,
+    maxAge: 3600
+  });
+
+  // Add logging to help debug CORS issues
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
   });
   console.log('CORS configuration applied successfully');
 

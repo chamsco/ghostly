@@ -26,41 +26,57 @@ import { toast } from 'sonner';
 
 // Create axios instances with different base URLs
 export const apiInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  },
+    'Accept': 'application/json'
+  }
 });
 
 export const authApiInstance = axios.create({
-  baseURL: process.env.REACT_APP_AUTH_API_URL || 'http://localhost:3000/auth',
+  baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth`,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  },
+    'Accept': 'application/json'
+  }
 });
 
-// Add request interceptor to include auth token
+// Add request interceptor for debugging
 apiInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    console.log('🚀 Request:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers
+    });
     return config;
   },
   (error) => {
+    console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor to handle errors
+// Add response interceptor for debugging
 apiInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Response:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
-    }
+    console.error('❌ Response Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
     return Promise.reject(error);
   }
 );
