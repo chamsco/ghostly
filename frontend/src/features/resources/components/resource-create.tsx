@@ -8,10 +8,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { ResourceType, DatabaseType, ServiceType, Resource } from '@/types/project';
+import { ResourceType, DatabaseType, ServiceType } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { generateUUID } from '@/utils/uuid';
 import { useNavigate } from 'react-router-dom';
 
 const formSchema = z.object({

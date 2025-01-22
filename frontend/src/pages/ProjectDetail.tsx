@@ -192,15 +192,7 @@ export function ProjectDetail() {
                 }}
               />
               <div className="mt-4">
-                <ResourceCreate
-                  projectId={project.id}
-                  onResourceCreated={(resource) => {
-                    setProject({
-                      ...project,
-                      resources: [...project.resources, resource.id]
-                    });
-                  }}
-                />
+                <ResourceCreate projectId={project.id} />
               </div>
             </CardContent>
           </Card>

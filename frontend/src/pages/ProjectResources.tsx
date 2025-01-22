@@ -41,12 +41,12 @@ export function ProjectResources() {
     fetchProject();
   }, [projectId, toast]);
 
-  const handleResourceCreated = (environmentName: string) => {
+  /*const handleResourceCreated = (environmentName: string) => {
     toast({
       title: "Success",
       description: `Resource added to ${environmentName} environment`
     });
-  };
+  };*/
 
   const handleDeleteResource = (resourceId: string) => {
     // Implement the delete logic here
@@ -96,10 +96,7 @@ export function ProjectResources() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium capitalize">{env.name} Resources</h3>
-                    <ResourceCreate 
-                      projectId={project.id}
-                      onResourceCreated={() => handleResourceCreated(env.name)}
-                    />
+                    {projectId && <ResourceCreate projectId={projectId} />}
                   </div>
                   {env.resources?.map((resource: any) => (
                     <Card key={resource.id}>

@@ -10,7 +10,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { Environment } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { generateUUID } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Environment name must be at least 3 characters'),
