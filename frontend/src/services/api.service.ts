@@ -116,6 +116,10 @@ export const authApi = {
         rememberMe
       });
       console.log('✅ Login successful');
+      // Store the access token
+      if (response.data.access_token) {
+        localStorage.setItem('accessToken', response.data.access_token);
+      }
       return response.data;
     } catch (error) {
       console.error('❌ Login failed:', error);
@@ -128,6 +132,10 @@ export const authApi = {
     try {
       const response = await authApiInstance.post<AuthResponse>('/register', data);
       console.log('✅ Registration successful');
+      // Store the access token
+      if (response.data.access_token) {
+        localStorage.setItem('accessToken', response.data.access_token);
+      }
       return response.data;
     } catch (error) {
       console.error('❌ Registration failed:', error);
