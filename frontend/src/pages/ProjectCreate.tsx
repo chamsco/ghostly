@@ -20,13 +20,13 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+//import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 //import { Progress } from '@/components/ui/progress';
 import { useServers } from '@/hooks/use-servers';
 import type { Environment, EnvironmentVariable } from '@/types/environment';
 import { generateUUID } from '@/lib/utils';
-import type { CreateProjectDto, CreateEnvironmentDto } from '@/types/project';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { CreateProjectDto } from '@/types/project';
+//import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Form validation schema
 const projectSchema = z.object({
@@ -79,7 +79,6 @@ const isSecretKey = (key: string): boolean => {
 export default function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [step, setStep] = useState<'basic' | 'environments'>('basic');
   const [globalVariables, setGlobalVariables] = useState<EnvironmentVariable[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([
     { 
