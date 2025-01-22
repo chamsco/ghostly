@@ -2,13 +2,12 @@
  * Project Creation Page
  * 
  * Form for creating new projects with:
- * - Project name and type selection
- * - Server selection (local/remote)
+ * - Project name and description
+ * - Server selection
  * - Environment variables input
- * - Docker compose file upload (optional)
- * - Form validation and error handling
+ * - .env file upload
  */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,26 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { ProjectType, DatabaseType, ServiceType, CreateProjectDto } from '@/types/project';
+import { CreateProjectDto } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
+import { useServers } from '@/hooks/use-servers';
+import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
+import { FileUpload } from '@/components/file-upload';
 
 // Form validation schema
 const formSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters'),
-  type: z.nativeEnum(ProjectType),
+  description: z.string(),
   serverId: z.string(),
-  // Database specific fields
-  databaseType: z.nativeEnum(DatabaseType).optional(),
-  databaseName: z.string().optional(),
-  adminEmail: z.string().email().optional(),
-  // Service specific fields
-  serviceType: z.nativeEnum(ServiceType).optional(),
-  repositoryUrl: z.string().url().optional(),
-  // Website specific fields
-  branch: z.string().optional(),
-  // Common fields
   environmentVariables: z.array(z.object({
     key: z.string(),
     value: z.string(),
@@ -50,71 +43,42 @@ export function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { servers, isLoading: isLoadingServers } = useServers();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      type: ProjectType.SERVICE,
+      description: '',
       serverId: '',
-      environmentVariables: [],
-      databaseType: undefined,
-      databaseName: '',
-      adminEmail: '',
-      serviceType: undefined,
-      repositoryUrl: '',
-      branch: 'main'
+      environmentVariables: []
     }
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const values = form.getValues();
-    if (!values.name || !values.type || !values.serverId) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+  const handleEnvFileUpload = useCallback((content: string) => {
+    const envVars = content.split('\n')
+      .filter(line => line.trim() && !line.startsWith('#'))
+      .map(line => {
+        const [key, value] = line.split('=').map(part => part.trim());
+        return {
+          key,
+          value,
+          isSecret: key.toLowerCase().includes('secret') || key.toLowerCase().includes('password')
+        };
       });
-      return;
-    }
+    
+    form.setValue('environmentVariables', envVars);
+  }, [form]);
 
+  const handleSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
       const projectData: CreateProjectDto = {
         name: values.name,
-        type: values.type,
+        description: values.description,
         serverId: values.serverId,
         environmentVariables: values.environmentVariables
       };
-
-      // Add type-specific fields
-      if (values.type === ProjectType.DATABASE) {
-        if (!values.databaseType || !values.databaseName || !values.adminEmail) {
-          throw new Error('Please fill in all database fields');
-        }
-        Object.assign(projectData, {
-          databaseType: values.databaseType,
-          databaseName: values.databaseName,
-          adminEmail: values.adminEmail
-        });
-      } else if (values.type === ProjectType.SERVICE) {
-        if (!values.serviceType || !values.repositoryUrl) {
-          throw new Error('Please fill in all service fields');
-        }
-        Object.assign(projectData, {
-          serviceType: values.serviceType,
-          repositoryUrl: values.repositoryUrl
-        });
-      } else if (values.type === ProjectType.WEBSITE) {
-        if (!values.repositoryUrl) {
-          throw new Error('Please fill in the repository URL');
-        }
-        Object.assign(projectData, {
-          repositoryUrl: values.repositoryUrl,
-          branch: values.branch
-        });
-      }
 
       await projectsApi.create(projectData);
       toast({
@@ -139,12 +103,12 @@ export function ProjectCreate() {
         <CardHeader>
           <CardTitle>Create Project</CardTitle>
           <CardDescription>
-            Deploy a new project to your local or remote server
+            Create a new project and configure its resources later
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -164,24 +128,19 @@ export function ProjectCreate() {
 
               <FormField
                 control={form.control}
-                name="type"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a project type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={ProjectType.DATABASE}>Database</SelectItem>
-                        <SelectItem value={ProjectType.SERVICE}>Service</SelectItem>
-                        <SelectItem value={ProjectType.WEBSITE}>Website</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe your project..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
                     <FormDescription>
-                      Choose the type of project you want to deploy
+                      A brief description of your project
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -193,25 +152,43 @@ export function ProjectCreate() {
                 name="serverId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Deployment Target</FormLabel>
+                    <FormLabel>Target Server</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select where to deploy" />
+                          <SelectValue placeholder="Select a server" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="local">Local Machine</SelectItem>
-                        <SelectItem value="remote">Remote Server</SelectItem>
+                        {isLoadingServers ? (
+                          <SelectItem value="loading" disabled>Loading servers...</SelectItem>
+                        ) : servers?.map(server => (
+                          <SelectItem key={server.id} value={server.id}>
+                            {server.name} ({server.type})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Choose where to deploy your project
+                      Choose the server where your project will be managed
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-4">
+                <FormLabel>Environment Variables</FormLabel>
+                <FileUpload
+                  accept=".env"
+                  onUpload={handleEnvFileUpload}
+                  description="Upload a .env file to import environment variables"
+                />
+                <EnvironmentVariablesEditor
+                  value={form.watch('environmentVariables')}
+                  onChange={(vars) => form.setValue('environmentVariables', vars)}
+                />
+              </div>
 
               <div className="flex justify-end space-x-2">
                 <Button

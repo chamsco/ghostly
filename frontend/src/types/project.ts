@@ -1,16 +1,10 @@
 /**
- * Project Types
+ * Project and Resource Types
  * 
- * Defines types and interfaces for projects in the application:
- * - Project: Main project interface with all properties
- * - ProjectType: Enum of supported project types
- * - DatabaseType: Enum of supported database types
- * - ServiceType: Enum of supported service types
- * - ProjectStatus: Enum of possible project statuses
- * - CreateProjectDto: Data required to create a new project
+ * Defines types and interfaces for projects and their resources in the application
  */
 
-export enum ProjectType {
+export enum ResourceType {
   DATABASE = 'database',
   SERVICE = 'service',
   WEBSITE = 'website'
@@ -27,7 +21,10 @@ export enum ServiceType {
   NODEJS = 'nodejs',
   PYTHON = 'python',
   PHP = 'php',
-  DOCKER = 'docker'
+  CUSTOM_DOCKER = 'custom_docker',
+  SUPABASE = 'supabase',
+  POCKETBASE = 'pocketbase',
+  APPWRITE = 'appwrite'
 }
 
 export enum ProjectStatus {
@@ -44,23 +41,45 @@ export interface EnvironmentVariable {
   isSecret: boolean;
 }
 
-export interface Project {
+export interface Environment {
   id: string;
   name: string;
-  type: ProjectType;
+  variables: EnvironmentVariable[];
+}
+
+export interface Resource {
+  id: string;
+  name: string;
+  type: ResourceType;
   serverId: string;
   status: ProjectStatus;
   error?: string;
+  environmentVariables?: EnvironmentVariable[];
   // Database specific fields
   databaseType?: DatabaseType;
   databaseName?: string;
   adminEmail?: string;
+  initialDatabase?: string;
+  dbPassword?: string;
   // Service specific fields
   serviceType?: ServiceType;
   repositoryUrl?: string;
+  dockerComposeContent?: string;
+  dockerImageUrl?: string;
   // Website specific fields
   branch?: string;
-  // Common fields
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  serverId: string;
+  status: ProjectStatus;
+  environments: Environment[];
+  resources: Resource[];
   environmentVariables?: EnvironmentVariable[];
   createdAt: string;
   updatedAt: string;
@@ -68,17 +87,32 @@ export interface Project {
 
 export interface CreateProjectDto {
   name: string;
-  type: ProjectType;
+  description: string;
   serverId: string;
+  environmentVariables?: EnvironmentVariable[];
+}
+
+export interface CreateResourceDto {
+  name: string;
+  type: ResourceType;
+  serverId: string;
+  environmentVariables?: EnvironmentVariable[];
   // Database specific fields
   databaseType?: DatabaseType;
   databaseName?: string;
   adminEmail?: string;
+  initialDatabase?: string;
+  dbPassword?: string;
   // Service specific fields
   serviceType?: ServiceType;
   repositoryUrl?: string;
+  dockerComposeContent?: string;
+  dockerImageUrl?: string;
   // Website specific fields
   branch?: string;
-  // Common fields
-  environmentVariables?: EnvironmentVariable[];
+}
+
+export interface CreateEnvironmentDto {
+  name: string;
+  variables: EnvironmentVariable[];
 } 

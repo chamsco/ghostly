@@ -30,7 +30,7 @@ import { Projects } from '@/pages/Projects';
 import { Users } from '@/pages/Users';
 import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
-import { CreateProject } from '@/pages/CreateProject';
+import { ProjectCreate } from '@/pages/ProjectCreate';
 import { ProjectSettings } from '@/pages/ProjectSettings';
 
 // Configure React Query client with custom defaults
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'projects/create',
-        element: <CreateProject />
+        element: <ProjectCreate />
       },
       {
         path: 'projects/:id/settings',

@@ -1,11 +1,20 @@
-import { ProjectType } from './project';
+/**
+ * Server Types
+ * 
+ * Defines types and interfaces for servers in the application
+ */
 
 export interface Server {
   id: string;
   name: string;
-  supportedTypes: ProjectType[];
-  status: 'online' | 'offline' | 'maintenance';
-  region: string;
+  type: 'local' | 'remote';
+  host?: string;
+  sshConfig?: {
+    username: string;
+    privateKey: string;
+    port: number;
+  };
+  status: 'online' | 'offline';
   createdAt: string;
   updatedAt: string;
 } 

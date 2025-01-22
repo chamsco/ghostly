@@ -11,146 +11,87 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-import { useProjects } from '@/contexts/projects.context';
-import { ProjectType, ProjectStatus } from '@/types/project';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { projectsApi } from '@/services/api.service';
+import type { Project } from '@/types/project';
 
-export default function ProjectList() {
+export function ProjectList() {
   const navigate = useNavigate();
-  const { projects, loading, error, refreshProjects } = useProjects();
-  const [selectedType, setSelectedType] = useState<ProjectType | 'all'>('all');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Refresh projects every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      refreshProjects();
-    }, 30000);
+    const fetchProjects = async () => {
+      try {
+        const data = await projectsApi.list();
+        setProjects(data);
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [refreshProjects]);
-
-  // Get status color based on project status
-  const getStatusColor = (status: ProjectStatus) => {
-    switch (status) {
-      case ProjectStatus.RUNNING:
-        return 'bg-green-500';
-      case ProjectStatus.DEPLOYING:
-        return 'bg-blue-500';
-      case ProjectStatus.STOPPED:
-        return 'bg-gray-500';
-      case ProjectStatus.FAILED:
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  // Get project type label
-  const getTypeLabel = (type: ProjectType) => {
-    switch (type) {
-      case ProjectType.DATABASE:
-        return 'Database';
-      case ProjectType.SERVICE:
-        return 'Service';
-      case ProjectType.WEBSITE:
-        return 'Website';
-      default:
-        return type;
-    }
-  };
-
-  if (loading && projects.length === 0) {
-    return (
-      <div className="container mx-auto p-4 space-y-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <Button disabled>
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-3/4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-1/2 mb-2" />
-                <Skeleton className="h-4 w-1/4" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Projects</h1>
-        <Button onClick={() => navigate('/projects/new')}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Project
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Projects</h1>
+        <Button onClick={() => navigate('/projects/create')}>
+          Create Project
         </Button>
       </div>
 
-      <div className="mb-4">
-        <Select value={selectedType} onValueChange={(value: ProjectType | 'all') => setSelectedType(value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value={ProjectType.DATABASE}>Database</SelectItem>
-            <SelectItem value={ProjectType.SERVICE}>Service</SelectItem>
-            <SelectItem value={ProjectType.WEBSITE}>Website</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid gap-4">
+        {projects.map((project) => (
+          <Card key={project.id} className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-semibold">{project.name}</h2>
+                <p className="text-sm text-muted-foreground">{project.description}</p>
+              </div>
+              <Button variant="outline" onClick={() => navigate(`/projects/${project.id}`)}>
+                View Details
+              </Button>
+            </div>
+            <div className="mt-4 flex items-center gap-4">
+              <Badge variant="secondary">
+                {project.resources.length} Resource{project.resources.length !== 1 ? 's' : ''}
+              </Badge>
+              <Badge variant="secondary">
+                {project.environments.length} Environment{project.environments.length !== 1 ? 's' : ''}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Created on {new Date(project.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+          </Card>
+        ))}
+
+        {projects.length === 0 && (
+          <Card className="p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-medium">No projects yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create your first project to get started
+              </p>
+              <Button
+                className="mt-4"
+                onClick={() => navigate('/projects/create')}
+              >
+                Create Project
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {projects.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-gray-500">No projects found. Create your first project to get started.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map(project => (
-            <Card key={project.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/projects/${project.id}`)}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{project.name}</span>
-                  <Badge variant="secondary">{getTypeLabel(project.type)}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`} />
-                  <span className="text-sm text-gray-500">{project.status}</span>
-                </div>
-                {project.error && (
-                  <p className="text-sm text-red-500 mt-2">{project.error}</p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   );
 } 

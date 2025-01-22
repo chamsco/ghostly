@@ -12,7 +12,7 @@ import axios, { AxiosError } from 'axios';
 import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
-import type { Project, CreateProjectDto } from '@/types/project';
+import type { Project, CreateProjectDto, Resource, Environment } from '@/types/project';
 import type { Server } from '@/types/server';
 
 // Get the base URL from environment or use default
@@ -205,11 +205,64 @@ export const authApi = {
 
 // Projects API endpoints
 export const projectsApi = {
-  list: () => api.get<Project[]>('/projects').then(res => res.data),
-  create: (data: CreateProjectDto) => api.post<Project>('/projects', data).then(res => res.data),
-  get: (id: string) => api.get<Project>(`/projects/${id}`).then(res => res.data),
+  create: async (data: CreateProjectDto): Promise<Project> => {
+    const response = await api.post('/projects', data);
+    return response.data;
+  },
+  list: async (): Promise<Project[]> => {
+    const response = await api.get('/projects');
+    return response.data;
+  },
+  get: async (id: string): Promise<Project> => {
+    const response = await api.get(`/projects/${id}`);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<Project>): Promise<Project> => {
+    const response = await api.patch(`/projects/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/projects/${id}`);
+  },
+  listServers: async (): Promise<Server[]> => {
+    const response = await api.get('/servers');
+    return response.data;
+  },
+  // Resource methods
+  createResource: async (projectId: string, data: any): Promise<Resource> => {
+    const response = await api.post(`/projects/${projectId}/resources`, data);
+    return response.data;
+  },
+  updateResource: async (resourceId: string, data: Partial<Resource>): Promise<Resource> => {
+    const response = await api.patch(`/resources/${resourceId}`, data);
+    return response.data;
+  },
+  deleteResource: async (resourceId: string): Promise<void> => {
+    await api.delete(`/resources/${resourceId}`);
+  },
+  // Environment methods
+  createEnvironment: async (projectId: string, data: any): Promise<Environment> => {
+    const response = await api.post(`/projects/${projectId}/environments`, data);
+    return response.data;
+  },
+  updateEnvironment: async (environmentId: string, data: Partial<Environment>): Promise<Environment> => {
+    const response = await api.patch(`/environments/${environmentId}`, data);
+    return response.data;
+  },
+  deleteEnvironment: async (environmentId: string): Promise<void> => {
+    await api.delete(`/environments/${environmentId}`);
+  },
   start: (id: string) => api.post<Project>(`/projects/${id}/deploy`).then(res => res.data),
-  stop: (id: string) => api.post<Project>(`/projects/${id}/stop`).then(res => res.data),
-  delete: (id: string) => api.delete<void>(`/projects/${id}`).then(res => res.data),
-  listServers: () => api.get<Server[]>('/servers').then(res => res.data)
+  stop: (id: string) => api.post<Project>(`/projects/${id}/stop`).then(res => res.data)
+};
+
+export const serversApi = {
+  list: async (): Promise<Server[]> => {
+    const response = await api.get('/servers');
+    return response.data;
+  },
+  get: async (id: string): Promise<Server> => {
+    const response = await api.get(`/servers/${id}`);
+    return response.data;
+  }
 };

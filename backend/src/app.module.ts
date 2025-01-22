@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
+import { ServersModule } from './servers/servers.module';
 import { User } from './users/entities/user.entity';
 import { Device } from './auth/entities/device.entity';
 import { Project } from './projects/entities/project.entity';
@@ -45,6 +46,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AuthModule,
     UsersModule,
     ProjectsModule,
+    ServersModule,
     MetricsModule,
     DashboardModule,
   ],
