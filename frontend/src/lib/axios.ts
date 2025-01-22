@@ -46,16 +46,22 @@ export const authApiInstance = axios.create({
 // Add request interceptor for debugging
 apiInstance.interceptors.request.use(
   (config) => {
-    console.log('🚀 Request:', {
+    console.log('🚀 Outgoing Request:', {
       url: config.url,
       method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers,
       data: config.data,
-      headers: config.headers
+      withCredentials: config.withCredentials
     });
     return config;
   },
   (error) => {
-    console.error('❌ Request Error:', error);
+    console.error('❌ Request Error:', {
+      message: error.message,
+      config: error.config,
+      stack: error.stack
+    });
     return Promise.reject(error);
   }
 );
@@ -63,42 +69,86 @@ apiInstance.interceptors.request.use(
 // Add response interceptor for debugging
 apiInstance.interceptors.response.use(
   (response) => {
-    console.log('✅ Response:', {
+    console.log('✅ Response Success:', {
       url: response.config.url,
       status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
       data: response.data
     });
     return response;
   },
   (error) => {
     console.error('❌ Response Error:', {
+      message: error.message,
       url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      headers: error.config?.headers,
       status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
+      statusText: error.response?.statusText,
+      responseHeaders: error.response?.headers,
+      responseData: error.response?.data,
+      stack: error.stack
     });
     return Promise.reject(error);
   }
 );
 
-// Add the same interceptors to authApiInstance
+// Add the same detailed logging to authApiInstance
 authApiInstance.interceptors.request.use(
   (config) => {
+    console.log('🔐 Auth Request:', {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers,
+      data: config.data,
+      withCredentials: config.withCredentials
+    });
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Added auth token to request');
     }
     return config;
   },
   (error) => {
+    console.error('❌ Auth Request Error:', {
+      message: error.message,
+      config: error.config,
+      stack: error.stack
+    });
     return Promise.reject(error);
   }
 );
 
 authApiInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Auth Response Success:', {
+      url: response.config.url,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
+    console.error('❌ Auth Response Error:', {
+      message: error.message,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      headers: error.config?.headers,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseHeaders: error.response?.headers,
+      responseData: error.response?.data,
+      stack: error.stack
+    });
     if (error.response?.status === 401) {
+      console.log('🔒 Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
     }

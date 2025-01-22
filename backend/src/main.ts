@@ -11,9 +11,19 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   console.log('Configuring CORS...');
-  // Configure CORS
+  // Configure CORS with detailed logging
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://168.119.111.140:3001'],
+    origin: (origin, callback) => {
+      console.log('Incoming request from origin:', origin);
+      const allowedOrigins = ['http://localhost:3001', 'http://168.119.111.140:3001'];
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log('Origin allowed:', origin);
+        callback(null, true);
+      } else {
+        console.log('Origin rejected:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -21,12 +31,16 @@ async function bootstrap() {
     maxAge: 3600
   });
 
-  // Add logging to help debug CORS issues
+  // Add detailed request logging middleware
   app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
+    console.log('=== Incoming Request ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('=======================');
     next();
   });
-  console.log('CORS configuration applied successfully');
 
   app.use(cookieParser());
 
@@ -37,7 +51,7 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
   }));
 
-  // Session middleware
+  // Session middleware with logging
   app.use(
     session({
       secret: configService.get('SESSION_SECRET') || 'your-secret-key',
@@ -45,16 +59,16 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false, // Set to false for HTTP
-        maxAge: 1000 * 60 * 60 * 24, // 1 day
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24,
         sameSite: 'lax',
         path: '/',
       },
     }),
   );
 
-  // Global prefix
-  app.setGlobalPrefix('api');
+  // Remove global prefix as it might be causing issues
+  // app.setGlobalPrefix('api');
 
   const port = configService.get('PORT') || 3000;
   console.log(`Starting server on port ${port}...`);
