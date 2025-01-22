@@ -29,24 +29,25 @@ export function ProjectDetail() {
   useEffect(() => {
     const fetchProject = async () => {
       if (!id) return;
+      
       try {
         setIsLoading(true);
-        const data = await projectsApi.get(id);
+        const data = await projectsApi.findOne(id);
         setProject(data);
-      } catch (err) {
+      } catch (error) {
+        console.error('Failed to fetch project:', error);
         toast({
+          variant: "destructive",
           title: "Error",
-          description: err instanceof Error ? err.message : "Failed to fetch project",
-          variant: "destructive"
+          description: "Failed to fetch project details"
         });
-        navigate('/projects');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchProject();
-  }, [id, navigate, toast]);
+  }, [id, toast]);
 
   useEffect(() => {
     const loadResources = async () => {

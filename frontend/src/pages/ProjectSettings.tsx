@@ -24,26 +24,27 @@ export function ProjectSettings() {
   useEffect(() => {
     const fetchProject = async () => {
       if (!id) return;
+      
       try {
-        const data = await projectsApi.get(id);
-        if (data) {
-          setProject(data);
-          setName(data.name);
-          setDescription(data.description ?? '');
-        }
-      } catch (err) {
+        setIsLoading(true);
+        const data = await projectsApi.findOne(id);
+        setProject(data);
+        setName(data.name);
+        setDescription(data.description ?? '');
+      } catch (error) {
+        console.error('Failed to fetch project:', error);
         toast({
+          variant: "destructive",
           title: "Error",
-          description: "Failed to load project",
-          variant: "destructive"
+          description: "Failed to fetch project details"
         });
-        navigate('/projects');
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchProject();
-  }, [id, navigate, toast]);
+  }, [id, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

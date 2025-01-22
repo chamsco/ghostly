@@ -7,9 +7,10 @@
  * - Error handling
  * - Response transformation
  */
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 //import type { AxiosInstance } from 'axios';
-import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
+import type { AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
+//import type { CreateUserDto} from '@/types/auth';
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto, Resource, CreateResourceDto } from '@/types/project';
@@ -19,8 +20,8 @@ import { apiInstance, authApiInstance } from '@/lib/axios';
 import type { RegisterDto, LoginDto } from '@/types/auth';
 
 // Get the base URL from environment or use default
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
-const API_TIMEOUT = 10000; // 10 seconds
+//const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
+//const API_TIMEOUT = 10000; // 10 seconds
 
 // Add request logging and auth token
 const addRequestInterceptor = (axiosInstance: typeof apiInstance) => {

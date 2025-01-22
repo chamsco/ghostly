@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { projectsApi } from '@/services/api.service';
 import type { Project } from '@/types/project';
+import { toast } from '@/components/ui/use-toast';
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -25,16 +26,23 @@ export function ProjectList() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const data = await projectsApi.list();
+        setIsLoading(true);
+        const data = await projectsApi.findAll();
         setProjects(data);
-      } catch (err) {
-        console.error('Failed to fetch projects:', err);
+      } catch (error) {
+        console.error('Failed to fetch projects:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch projects"
+        });
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchProjects();
-  }, []);
+  }, [toast]);
 
   if (isLoading) {
     return <div>Loading...</div>;

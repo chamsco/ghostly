@@ -20,23 +20,26 @@ export function ProjectResources() {
 
   useEffect(() => {
     const fetchProject = async () => {
+      if (!projectId) return;
+      
       try {
-        if (!projectId) return;
-        const data = await projectsApi.get(projectId);
+        setIsLoading(true);
+        const data = await projectsApi.findOne(projectId);
         setProject(data);
-        setIsLoading(false);
-      } catch (err) {
+      } catch (error) {
+        console.error('Failed to fetch project:', error);
         toast({
+          variant: "destructive",
           title: "Error",
-          description: err instanceof Error ? err.message : "Failed to fetch project",
-          variant: "destructive"
+          description: "Failed to fetch project details"
         });
-        navigate('/projects');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchProject();
-  }, [projectId, toast, navigate]);
+  }, [projectId, toast]);
 
   const handleResourceCreated = (environmentName: string) => {
     toast({

@@ -20,15 +20,16 @@ import { CreateUserDto, BiometricRegistrationOptions } from '@/types/auth';
 //import {BiometricAuthenticationOptions} from '@/types/auth';
 import { authApi } from '@/services/api.service';
 import axios from 'axios';
+import type { LoginDto, RegisterDto } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (data: LoginDto) => Promise<void>;
   logout: () => Promise<void>;
-  register: (data: CreateUserDto) => Promise<void>;
+  register: (data: RegisterDto) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
   updatePassword: (oldPassword: string, newPassword: string) => Promise<void>;
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('accessToken'));
 
   const isPublicRoute = useMemo(() => {
     return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
@@ -59,137 +61,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check auth status on mount
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      console.log('🔍 Checking authentication status...');
-      try {
-        const token = localStorage.getItem('accessToken');
-        console.log('📝 Token status:', token ? 'Found' : 'Not found');
-        
-        if (!token) {
-          console.log('⚠️ No token found, setting loading to false');
+    const initializeAuth = async () => {
+      if (accessToken) {
+        try {
+          setLoading(true);
+          const userData = await authApi.me();
+          setUser(userData);
+        } catch (error) {
+          console.error('Failed to get user data:', error);
+          setUser(null);
+          localStorage.removeItem('accessToken');
+          setAccessToken(null);
+        } finally {
           setLoading(false);
-          if (!isPublicRoute) {
-            console.log('🔄 Redirecting to login page');
-            navigate('/login');
-          }
-          return;
         }
-
-        console.log('🔄 Fetching current user data...');
-        const userData = await authApi.getCurrentUser();
-        console.log('✅ User data retrieved:', { id: userData.id, username: userData.username });
-        setUser({
-          ...userData,
-          status: UserStatus.ACTIVE,
-          lastActive: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error('❌ Auth check failed:', err);
-        localStorage.removeItem('accessToken');
-        setError(err instanceof Error ? err.message : 'Authentication failed');
-        
-        if (!isPublicRoute) {
-          console.log('🔄 Redirecting to login page due to error');
-          navigate('/login');
-        }
-        
-        // Log additional error details
-        if (axios.isAxiosError(err)) {
-          console.error('🌐 API Error Details:', {
-            status: err.response?.status,
-            data: err.response?.data,
-            config: {
-              url: err.config?.url,
-              method: err.config?.method,
-              baseURL: err.config?.baseURL
-            }
-          });
-        }
-      } finally {
-        console.log('🏁 Auth check completed');
+      } else {
         setLoading(false);
       }
     };
 
-    checkAuthStatus();
-  }, [navigate, isPublicRoute]);
+    initializeAuth();
+  }, [accessToken]);
 
-  const login = async (username: string, password: string, rememberMe?: boolean) => {
-    console.log('🔐 Attempting login...', { username, rememberMe });
+  const login = async (data: LoginDto): Promise<void> => {
     try {
       setLoading(true);
-      setError(null);
-
-      const { access_token, user: userData } = await authApi.login(username, password, rememberMe || false);
-      console.log('✅ Login successful, setting token and user data');
-      localStorage.setItem('accessToken', access_token);
-      setUser({
-        ...userData,
-        status: UserStatus.ACTIVE,
-        lastActive: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('❌ Login failed:', err);
-      setError(err instanceof Error ? err.message : 'Login failed');
-      
-      // Log additional error details
-      if (axios.isAxiosError(err)) {
-        console.error('🌐 API Error Details:', {
-          status: err.response?.status,
-          data: err.response?.data,
-          config: {
-            url: err.config?.url,
-            method: err.config?.method,
-            baseURL: err.config?.baseURL
-          }
-        });
+      const response = await authApi.login(data);
+      if (response.access_token) {
+        localStorage.setItem('accessToken', response.access_token);
+        setAccessToken(response.access_token);
+        setUser(response.user);
       }
-      
-      throw err;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = useCallback(async () => {
+  const logout = async (): Promise<void> => {
     try {
       setLoading(true);
-      setError(null);
-
       await authApi.logout();
-      localStorage.removeItem('accessToken');
-      setUser(null);
-      navigate('/login');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Logout failed');
-      throw err;
+    } catch (error) {
+      console.error('Logout failed:', error);
     } finally {
+      setUser(null);
+      setAccessToken(null);
+      localStorage.removeItem('accessToken');
       setLoading(false);
     }
-  }, [navigate]);
+  };
 
-  const register = async (data: CreateUserDto) => {
+  const register = async (data: RegisterDto): Promise<void> => {
     try {
       setLoading(true);
-      setError(null);
-
-      const { access_token, user: userData } = await authApi.register(data);
-      localStorage.setItem('accessToken', access_token);
-      setUser({
-        ...userData,
-        status: UserStatus.ACTIVE,
-        lastActive: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-
-      navigate('/onboarding');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
-      throw err;
+      const response = await authApi.register(data);
+      if (response.access_token) {
+        localStorage.setItem('accessToken', response.access_token);
+        setAccessToken(response.access_token);
+        setUser(response.user);
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
     } finally {
       setLoading(false);
     }
