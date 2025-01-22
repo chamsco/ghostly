@@ -1,9 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 import { Project } from './project.entity';
-import { Server } from '../../servers/entities/server.entity';
-import { ResourceType, DatabaseType, ServiceType } from '../types/project.types';
+import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../types/project.types';
 
-@Entity('resources')
+@Entity()
 export class Resource {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -17,28 +16,21 @@ export class Resource {
   })
   type: ResourceType;
 
-  @ManyToOne(() => Server)
-  server: Server;
-
   @Column()
   serverId: string;
 
   @Column({
     type: 'enum',
-    enum: ['active', 'paused', 'stopped', 'failed'],
-    default: 'stopped'
+    enum: ProjectStatus,
+    default: ProjectStatus.CREATED
   })
-  status: 'active' | 'paused' | 'stopped' | 'failed';
+  status: ProjectStatus;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true })
   error?: string;
 
-  @Column('jsonb', { default: [] })
-  environmentVariables: Array<{
-    key: string;
-    value: string;
-    isSecret: boolean;
-  }>;
+  @Column('jsonb', { nullable: true })
+  environmentVariables?: { key: string; value: string; isSecret: boolean; }[];
 
   // Database specific fields
   @Column({
@@ -81,15 +73,17 @@ export class Resource {
   @Column({ nullable: true })
   branch?: string;
 
-  @ManyToOne(() => Project, project => project.resources, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, project => project.resources, {
+    onDelete: 'CASCADE'
+  })
   project: Project;
 
   @Column()
   projectId: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt: string;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt: string;
 } 

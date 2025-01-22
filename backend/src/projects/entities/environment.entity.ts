@@ -1,7 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 import { Project } from './project.entity';
 
-@Entity('environments')
+@Entity()
 export class Environment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -9,22 +9,20 @@ export class Environment {
   @Column()
   name: string;
 
-  @Column('jsonb', { default: [] })
-  variables: Array<{
-    key: string;
-    value: string;
-    isSecret: boolean;
-  }>;
+  @Column('jsonb')
+  variables: { key: string; value: string; isSecret: boolean; }[];
 
-  @ManyToOne(() => Project, project => project.environments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, project => project.environments, {
+    onDelete: 'CASCADE'
+  })
   project: Project;
 
   @Column()
   projectId: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt: string;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt: string;
 } 

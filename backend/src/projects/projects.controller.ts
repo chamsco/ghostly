@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectsService } from './projects.service';
-import { Project, ProjectStatus } from './entities/project.entity';
+import { Project } from './entities/project.entity';
+import { ProjectStatus } from './types/project.types';
 import { Resource } from './entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
