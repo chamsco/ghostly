@@ -15,9 +15,12 @@ import { generateUUID } from '@/lib/utils';
 const formSchema = z.object({
   name: z.string().min(3, 'Environment name must be at least 3 characters'),
   variables: z.array(z.object({
+    id: z.string(),
     key: z.string(),
     value: z.string(),
-    isSecret: z.boolean()
+    isSecret: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string()
   })).default([])
 });
 
@@ -44,19 +47,12 @@ export function EnvironmentCreate({ projectId, onEnvironmentCreated }: Props) {
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
-      const now = new Date().toISOString();
       const environment = await projectsApi.createEnvironment(projectId, {
         name: values.name,
-        variables: values.variables.map(v => ({
-          id: generateUUID(),
-          key: v.key,
-          value: v.value,
-          isSecret: v.isSecret,
-          createdAt: now,
-          updatedAt: now
-        })),
+        variables: values.variables,
         resources: []
       });
+
       if (environment) {
         onEnvironmentCreated(environment);
         setIsOpen(false);

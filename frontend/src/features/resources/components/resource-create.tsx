@@ -32,9 +32,12 @@ const formSchema = z.object({
   branch: z.string().optional(),
   // Common fields
   environmentVariables: z.array(z.object({
+    id: z.string(),
     key: z.string(),
     value: z.string(),
-    isSecret: z.boolean()
+    isSecret: z.boolean(),
+    createdAt: z.string(),
+    updatedAt: z.string()
   })).default([])
 });
 
@@ -42,10 +45,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
   projectId: string;
-  onResourceCreated: (resource: Resource) => void;
 }
 
-export function ResourceCreate({ projectId, onResourceCreated }: Props) {
+export function ResourceCreate({ projectId }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -65,18 +67,10 @@ export function ResourceCreate({ projectId, onResourceCreated }: Props) {
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
-      const now = new Date().toISOString();
       const resource = await projectsApi.createResource(projectId, {
         ...values,
         serverId: projectId,
-        environmentVariables: values.environmentVariables.map(v => ({
-          id: generateUUID(),
-          key: v.key,
-          value: v.value,
-          isSecret: v.isSecret,
-          createdAt: now,
-          updatedAt: now
-        }))
+        environmentVariables: values.environmentVariables
       });
       if (resource) {
         toast({

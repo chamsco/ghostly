@@ -42,13 +42,29 @@ export function EnvironmentVariablesEditor({ value = [], onChange }: Props) {
     onChange(value.filter((_, i) => i !== index));
   };
 
-  const handleVariableChange = (index: number, field: keyof EnvironmentVariable, newValue: string) => {
+  const handleVariableChange = (index: number, field: keyof EnvironmentVariable, newValue: any) => {
     const updatedVariables = [...value];
+    const now = new Date().toISOString();
+    
+    if (!updatedVariables[index].id) {
+      updatedVariables[index] = {
+        ...updatedVariables[index],
+        id: generateUUID(),
+        key: updatedVariables[index].key || '',
+        value: updatedVariables[index].value || '',
+        isSecret: updatedVariables[index].isSecret || false,
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+    
     updatedVariables[index] = {
       ...updatedVariables[index],
       [field]: newValue,
+      updatedAt: now,
       isSecret: field === 'key' ? isSecretKey(newValue) : updatedVariables[index].isSecret
     };
+    
     onChange(updatedVariables);
   };
 
