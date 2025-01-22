@@ -42,10 +42,9 @@ type ServerFormValues = z.infer<typeof serverFormSchema>;
 interface ServerCreateProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
 }
 
-export function ServerCreate({ open, onOpenChange, onSuccess }: ServerCreateProps) {
+export function ServerCreate({ open, onOpenChange }: ServerCreateProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();

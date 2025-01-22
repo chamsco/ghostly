@@ -16,6 +16,7 @@ import { ResourceCreate } from '@/features/resources/components/resource-create'
 import { EnvironmentList } from '@/features/environments/components/environment-list';
 import { EnvironmentCreate } from '@/features/environments/components/environment-create';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
+import { Button } from '@/components/ui/button';
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -122,10 +123,21 @@ export function ProjectDetail() {
     <div className="container mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>{project.name}</CardTitle>
-          <CardDescription>
-            {project.description}
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>{project.name}</CardTitle>
+              <CardDescription>
+                {project.description}
+              </CardDescription>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isLoading}
+            >
+              Delete Project
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
