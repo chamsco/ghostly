@@ -15,33 +15,15 @@ import type { User } from '@/types/user';
 import type { Project, CreateProjectDto, Resource, CreateResourceDto } from '@/types/project';
 import type { Environment, CreateEnvironmentDto } from '@/types/environment';
 import type { Server, CreateServerDto } from '@/types/server';
-import { apiInstance } from '@/lib/axios';
+import { apiInstance, authApiInstance } from '@/lib/axios';
 import type { RegisterDto, LoginDto } from '@/types/auth';
 
 // Get the base URL from environment or use default
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
 const API_TIMEOUT = 10000; // 10 seconds
 
-// Create axios instance for auth-related endpoints
-const authApiInstance = axios.create({
-  baseURL: `${BASE_URL}/api/auth`,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Create axios instance for protected endpoints
-export const api = axios.create({
-  baseURL: `${BASE_URL}/api`,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
 // Add request logging and auth token
-const addRequestInterceptor = (axiosInstance: typeof api | typeof authApiInstance) => {
+const addRequestInterceptor = (axiosInstance: typeof apiInstance) => {
   axiosInstance.interceptors.request.use(
     (config) => {
       console.log('🚀 Outgoing Request:', {
@@ -66,7 +48,7 @@ const addRequestInterceptor = (axiosInstance: typeof api | typeof authApiInstanc
 };
 
 // Add response logging and error handling
-const addResponseInterceptor = (axiosInstance: typeof api | typeof authApiInstance) => {
+const addResponseInterceptor = (axiosInstance: typeof apiInstance) => {
   axiosInstance.interceptors.response.use(
     (response) => {
       console.log('✅ Response received:', {
@@ -104,69 +86,47 @@ const addResponseInterceptor = (axiosInstance: typeof api | typeof authApiInstan
 };
 
 // Add interceptors to both instances
-addRequestInterceptor(api);
+addRequestInterceptor(apiInstance);
 addRequestInterceptor(authApiInstance);
-addResponseInterceptor(api);
+addResponseInterceptor(apiInstance);
 addResponseInterceptor(authApiInstance);
 
 export const authApi = {
-  async login(username: string, password: string, rememberMe: boolean): Promise<AuthResponse> {
-    console.log('🔐 Attempting login request');
+  register: async (data: RegisterDto): Promise<AuthResponse> => {
     try {
-      const response = await authApiInstance.post<AuthResponse>('/login', {
-        username,
-        password,
-        rememberMe
-      });
-      console.log('✅ Login successful');
-      // Store the access token
-      if (response.data.access_token) {
-        localStorage.setItem('accessToken', response.data.access_token);
-      }
+      const response = await authApiInstance.post('/register', data);
       return response.data;
     } catch (error) {
-      console.error('❌ Login failed:', error);
+      console.error('Registration error:', error);
       throw error;
     }
   },
 
-  async register(data: CreateUserDto): Promise<AuthResponse> {
-    console.log('📝 Attempting registration');
+  login: async (data: LoginDto): Promise<AuthResponse> => {
     try {
-      const response = await authApiInstance.post<AuthResponse>('/register', data);
-      console.log('✅ Registration successful');
-      // Store the access token
-      if (response.data.access_token) {
-        localStorage.setItem('accessToken', response.data.access_token);
-      }
+      const response = await authApiInstance.post('/login', data);
       return response.data;
     } catch (error) {
-      console.error('❌ Registration failed:', error);
+      console.error('Login error:', error);
       throw error;
     }
   },
 
-  async logout(): Promise<void> {
-    console.log('🔄 Attempting logout');
+  logout: async (): Promise<void> => {
     try {
       await authApiInstance.post('/logout');
-      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('❌ Logout failed:', error);
-    } finally {
-      // Always clear the token
-      localStorage.removeItem('accessToken');
+      console.error('Logout error:', error);
+      throw error;
     }
   },
 
-  async getCurrentUser(): Promise<User> {
-    console.log('🔄 Fetching current user');
+  me: async (): Promise<User> => {
     try {
-      const response = await authApiInstance.get<User>('/me');
-      console.log('✅ Current user fetched successfully');
+      const response = await authApiInstance.get('/me');
       return response.data;
     } catch (error) {
-      console.error('❌ Failed to fetch current user:', error);
+      console.error('Get current user error:', error);
       throw error;
     }
   },
@@ -218,43 +178,43 @@ export const authApi = {
  * Projects API endpoints
  */
 export const projectsApi = {
-  list: async (): Promise<Project[]> => {
+  create: async (data: CreateProjectDto): Promise<Project> => {
     try {
-      const response = await apiInstance.get<Project[]>('/projects');
+      const response = await apiInstance.post('/projects', data);
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      return [];
+      console.error('Project creation error:', error);
+      throw error;
     }
   },
 
-  get: async (id: string): Promise<Project | null> => {
+  findAll: async (): Promise<Project[]> => {
     try {
-      const response = await apiInstance.get<Project>(`/projects/${id}`);
+      const response = await apiInstance.get('/projects');
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch project:', error);
-      return null;
+      console.error('Fetch projects error:', error);
+      throw error;
     }
   },
 
-  create: async (data: CreateProjectDto): Promise<Project | null> => {
+  findOne: async (id: string): Promise<Project> => {
     try {
-      const response = await apiInstance.post<Project>('/projects', data);
+      const response = await apiInstance.get(`/projects/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to create project:', error);
-      return null;
+      console.error(`Fetch project ${id} error:`, error);
+      throw error;
     }
   },
 
-  update: async (id: string, data: Partial<Project>): Promise<Project | null> => {
+  update: async (id: string, data: Partial<Project>): Promise<Project> => {
     try {
-      const response = await apiInstance.patch<Project>(`/projects/${id}`, data);
+      const response = await apiInstance.patch(`/projects/${id}`, data);
       return response.data;
     } catch (error) {
-      console.error('Failed to update project:', error);
-      return null;
+      console.error(`Update project ${id} error:`, error);
+      throw error;
     }
   },
 
@@ -262,7 +222,8 @@ export const projectsApi = {
     try {
       await apiInstance.delete(`/projects/${id}`);
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      console.error(`Delete project ${id} error:`, error);
+      throw error;
     }
   },
 
@@ -271,7 +232,7 @@ export const projectsApi = {
       const response = await apiInstance.post<Project>(`/projects/${id}/deploy`);
       return response.data;
     } catch (error) {
-      console.error('Failed to start project:', error);
+      console.error(`Start project ${id} error:`, error);
       return null;
     }
   },
@@ -281,19 +242,39 @@ export const projectsApi = {
       const response = await apiInstance.post<Project>(`/projects/${id}/stop`);
       return response.data;
     } catch (error) {
-      console.error('Failed to stop project:', error);
+      console.error(`Stop project ${id} error:`, error);
       return null;
     }
   },
 
-  // Resource methods
-  createResource: async (projectId: string, data: CreateResourceDto): Promise<Resource | null> => {
+  restart: async (id: string): Promise<Project | null> => {
     try {
-      const response = await apiInstance.post<Resource>(`/projects/${projectId}/resources`, data);
+      const response = await apiInstance.post<Project>(`/projects/${id}/restart`);
       return response.data;
     } catch (error) {
-      console.error('Failed to create resource:', error);
+      console.error(`Restart project ${id} error:`, error);
       return null;
+    }
+  },
+
+  logs: async (id: string): Promise<string[]> => {
+    try {
+      const response = await apiInstance.get<string[]>(`/projects/${id}/logs`);
+      return response.data;
+    } catch (error) {
+      console.error(`Get project ${id} logs error:`, error);
+      return [];
+    }
+  },
+
+  // Resource methods
+  createResource: async (projectId: string, data: CreateResourceDto): Promise<Resource> => {
+    try {
+      const response = await apiInstance.post(`/projects/${projectId}/resources`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Resource creation error:', error);
+      throw error;
     }
   },
 
@@ -326,13 +307,13 @@ export const projectsApi = {
   },
 
   // Environment methods
-  createEnvironment: async (projectId: string, data: CreateEnvironmentDto): Promise<Environment | null> => {
+  createEnvironment: async (projectId: string, data: CreateEnvironmentDto): Promise<Environment> => {
     try {
-      const response = await apiInstance.post<Environment>(`/projects/${projectId}/environments`, data);
+      const response = await apiInstance.post(`/projects/${projectId}/environments`, data);
       return response.data;
     } catch (error) {
-      console.error('Failed to create environment:', error);
-      return null;
+      console.error('Environment creation error:', error);
+      throw error;
     }
   },
 
@@ -376,28 +357,75 @@ export const projectsApi = {
 };
 
 export const serversApi = {
-  list: async (): Promise<Server[]> => {
-    const response = await api.get('/servers');
-    return response.data;
-  },
-  get: async (id: string): Promise<Server> => {
-    const response = await api.get(`/servers/${id}`);
-    return response.data;
-  },
   create: async (data: CreateServerDto): Promise<Server> => {
-    const response = await api.post('/servers', data);
-    return response.data;
+    try {
+      console.log('Creating server with data:', data);
+      const response = await apiInstance.post('/servers', data);
+      console.log('Server created successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Server creation error:', error);
+      throw error;
+    }
   },
+
+  findAll: async (): Promise<Server[]> => {
+    try {
+      console.log('Fetching all servers');
+      const response = await apiInstance.get('/servers');
+      console.log('Servers fetched successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Fetch servers error:', error);
+      throw error;
+    }
+  },
+
+  findOne: async (id: string): Promise<Server> => {
+    try {
+      console.log('Fetching server:', id);
+      const response = await apiInstance.get(`/servers/${id}`);
+      console.log('Server fetched successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Fetch server ${id} error:`, error);
+      throw error;
+    }
+  },
+
   update: async (id: string, data: Partial<Server>): Promise<Server> => {
-    const response = await api.put(`/servers/${id}`, data);
-    return response.data;
+    try {
+      console.log('Updating server:', id, data);
+      const response = await apiInstance.put(`/servers/${id}`, data);
+      console.log('Server updated successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Update server ${id} error:`, error);
+      throw error;
+    }
   },
+
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/servers/${id}`);
+    try {
+      console.log('Deleting server:', id);
+      await apiInstance.delete(`/servers/${id}`);
+      console.log('Server deleted successfully');
+    } catch (error) {
+      console.error(`Delete server ${id} error:`, error);
+      throw error;
+    }
   },
+
   checkConnection: async (id: string): Promise<{ status: boolean }> => {
-    const response = await api.get(`/servers/${id}/check-connection`);
-    return response.data;
+    try {
+      console.log('Checking server connection:', id);
+      const response = await apiInstance.get(`/servers/${id}/check-connection`);
+      console.log('Connection check result:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Check connection error for server ${id}:`, error);
+      throw error;
+    }
   }
 };
 
