@@ -14,8 +14,8 @@ export class MetricsService {
   constructor() {
     // Initialize metrics collection
     this.collectMetrics();
-    // Collect metrics every 30 seconds
-    setInterval(() => this.collectMetrics(), 30000);
+    // Collect metrics every 2 minutes
+    setInterval(() => this.collectMetrics(), 120000);
   }
 
   private async collectMetrics() {

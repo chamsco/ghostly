@@ -275,7 +275,7 @@ export function Dashboard() {
       if (!dashboardStats.error) fetchDashboardStats();
       if (!systemMetrics.error) fetchSystemMetrics();
       if (!historicalMetrics.error) fetchHistoricalMetrics();
-    }, 60000);
+    }, 120000);
 
     return () => clearInterval(interval);
   }, [fetchDashboardStats, fetchSystemMetrics, fetchHistoricalMetrics]);
