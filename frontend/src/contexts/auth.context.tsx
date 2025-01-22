@@ -13,13 +13,14 @@
  * - Password reset
  * - Route protection
  */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { User, UserStatus } from '@/types/user';
-import { CreateUserDto, BiometricRegistrationOptions } from '@/types/auth';
+import { createContext, useContext, useState, useEffect} from 'react';
+//import { useNavigate, useLocation } from 'react-router-dom';
+import { User } from '@/types/user';
+//import {UserStatus} from   '@/types/user' 
+//import { CreateUserDto} from '@/types/auth';
+import { BiometricRegistrationOptions } from '@/types/auth';
 //import {BiometricAuthenticationOptions} from '@/types/auth';
 import { authApi } from '@/services/api.service';
-import axios from 'axios';
 import type { LoginDto, RegisterDto } from '@/types/auth';
 
 interface AuthContextType {
@@ -45,19 +46,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password'];
+//const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
-  const location = useLocation();
+  //const navigate = useNavigate();
+  //const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('accessToken'));
 
-  const isPublicRoute = useMemo(() => {
-    return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
-  }, [location.pathname]);
+  //const isPublicRoute = useMemo(() => {
+  //  return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
+  //}, [location.pathname]);
 
   // Check auth status on mount
   useEffect(() => {

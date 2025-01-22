@@ -30,7 +30,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      const data = await projectsApi.list();
+      const data = await projectsApi.findAll();
       setProjects(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load projects');
