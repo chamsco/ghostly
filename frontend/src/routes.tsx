@@ -34,7 +34,7 @@ import { ProjectCreate } from '@/pages/ProjectCreate';
 import { ProjectSettings } from '@/pages/ProjectSettings';
 import { ProjectResources } from '@/pages/ProjectResources';
 import { Servers } from '@/pages/Servers';
-import { ServerCreate } from '@/pages/ServerCreate';
+import { ServerCreatePage } from '@/pages/ServerCreatePage';
 
 // Configure React Query client with custom defaults
 // - Disable automatic retries on failed requests
@@ -101,7 +101,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'servers/create',
-        element: <ServerCreate />
+        element: <ServerCreatePage />
       }
     ]
   },
