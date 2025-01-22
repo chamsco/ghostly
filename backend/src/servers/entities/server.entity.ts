@@ -7,6 +7,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { ProjectType } from '../../projects/types/project.types';
+import { ServerType } from '../types/server.types';
 
 @Entity('servers')
 export class Server {
@@ -22,24 +23,39 @@ export class Server {
   @Column()
   host: string;
 
-  @Column({ default: 22 })
+  @Column()
   port: number;
 
-  @Column()
+  @Column({ nullable: true })
   username: string;
 
-  @Column()
-  @Exclude()
+  @Column({ nullable: true })
   privateKey: string;
 
-  @Column({ default: false })
-  isBuildServer: boolean;
+  @Column({ type: 'enum', enum: ServerType, default: ServerType.REMOTE })
+  type: ServerType;
 
   @Column({ default: false })
   isSwarmManager: boolean;
 
   @Column({ default: false })
   isSwarmWorker: boolean;
+
+  @Column({ default: false })
+  isBuildServer: boolean;
+
+  @Column({ nullable: true })
+  domainName: string;
+
+  @Column('jsonb', { nullable: true })
+  portMappings: {
+    containerPort: number;
+    hostPort: number;
+    protocol: 'tcp' | 'udp';
+  }[];
+
+  @Column('jsonb', { nullable: true })
+  labels: Record<string, string>;
 
   @Column('simple-array', { default: [] })
   supportedTypes: ProjectType[];

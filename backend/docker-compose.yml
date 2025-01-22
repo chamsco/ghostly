@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.4.2
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD}
+      --bind 127.0.0.1
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --maxclients 100
+      --tcp-keepalive 300
+      --appendonly yes
+      --stop-writes-on-bgsave-error yes
+      --protected-mode yes
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    ports:
+      - "127.0.0.1:6379:6379"  # Only bind to localhost
+    restart: unless-stopped
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 26677
+        hard: 46677
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  app_network:
+    driver: bridge
+    internal: true  # Prevents network access from outside Docker
+
+volumes:
+  redis_data:
+    driver: local 
