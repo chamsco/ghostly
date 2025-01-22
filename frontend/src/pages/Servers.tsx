@@ -1,22 +1,12 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
 import { useServers } from '@/hooks/use-servers';
 import { ServerCreate } from './ServerCreate';
 
 export function Servers() {
-  const { servers, isLoading, error, refetch } = useServers();
-  const { toast } = useToast();
+  const { servers, isLoading, error } = useServers();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  const handleServerCreated = () => {
-    refetch();
-    toast({
-      title: "Success",
-      description: "Server created successfully"
-    });
-  };
 
   if (isLoading) {
     return (
