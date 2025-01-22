@@ -37,7 +37,8 @@ import {
   X,
   Sun,
   Moon,
-  User
+  User,
+  Server
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 //import { Server, Shield } from 'lucide-react';
@@ -66,6 +67,11 @@ const navItems: NavItem[] = [
     label: 'Projects',
     path: '/projects',
     icon: <FolderKanban className="h-5 w-5" />
+  },
+  {
+    label: 'Servers',
+    path: '/servers',
+    icon: <Server className="h-5 w-5" />
   },
   {
     label: 'Users',
