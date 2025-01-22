@@ -62,13 +62,18 @@ export function ResourceCreate({ projectId, onResourceCreated }: Props) {
   const handleSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
-      const resource = await projectsApi.createResource(projectId, values);
-      onResourceCreated(resource);
-      setIsOpen(false);
-      toast({
-        title: "Success",
-        description: "Resource created successfully"
+      const resource = await projectsApi.createResource(projectId, {
+        ...values,
+        serverId: projectId // Use project ID as server ID or get it from props if needed
       });
+      if (resource) {
+        onResourceCreated(resource);
+        setIsOpen(false);
+        toast({
+          title: "Success",
+          description: "Resource created successfully"
+        });
+      }
     } catch (err) {
       toast({
         title: "Error",

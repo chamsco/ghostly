@@ -14,293 +14,290 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+//import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { CreateProjectDto } from '@/types/project';
+//import { CreateProjectDto } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
+//import { Progress } from '@/components/ui/progress';
 import { useServers } from '@/hooks/use-servers';
+import type { EnvironmentVariable } from '@/types/environment';
+import type { Environment } from '@/types/environment';
 
 // Form validation schemas for each step
 const basicInfoSchema = z.object({
-  name: z.string().min(3, 'Project name must be at least 3 characters'),
-  description: z.string(),
-  serverId: z.string().min(1, 'Please select a server')
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().min(1, 'Description is required'),
+  serverId: z.string().min(1, 'Server is required'),
 });
 
-const environmentSchema = z.object({
-  environments: z.array(z.object({
-    name: z.string(),
-    variables: z.array(z.object({
-      key: z.string(),
-      value: z.string(),
-      isSecret: z.boolean()
-    })).default([])
-  }))
-});
+type BasicInfoValues = z.infer<typeof basicInfoSchema>;
 
-type BasicInfoFormValues = z.infer<typeof basicInfoSchema>;
-type EnvironmentFormValues = z.infer<typeof environmentSchema>;
+const parseEnvFile = (content: string): EnvironmentVariable[] => {
+  const variables: EnvironmentVariable[] = [];
+  
+  content.split('\n').forEach(line => {
+    // Skip comments and empty lines
+    if (line.trim().startsWith('#') || !line.trim()) return;
+    
+    const [key, ...valueParts] = line.split('=');
+    if (!key || !valueParts.length) return;
+    
+    const value = valueParts.join('=');
+    variables.push({
+      key: key.trim(),
+      value: value.trim(),
+      isSecret: key.includes('SECRET') || key.includes('PASSWORD') || key.includes('KEY'),
+    });
+  });
+  
+  return variables;
+};
 
-export function ProjectCreate() {
+export default function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [projectData, setProjectData] = useState<Partial<CreateProjectDto>>({});
-  const { servers, isLoading: serversLoading } = useServers();
+  const [step, setStep] = useState<'basic' | 'environments'>('basic');
+  const [basicInfo, setBasicInfo] = useState<BasicInfoValues>();
+  const [environments, setEnvironments] = useState<Environment[]>([
+    { 
+      id: crypto.randomUUID(),
+      name: 'production', 
+      variables: [],
+      resources: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'development', 
+      variables: [],
+      resources: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ]);
+  const { servers, isLoading: isLoadingServers } = useServers();
 
-  // Form for basic info (Step 1)
-  const basicInfoForm = useForm<BasicInfoFormValues>({
+  const basicForm = useForm<BasicInfoValues>({
     resolver: zodResolver(basicInfoSchema),
     defaultValues: {
       name: '',
       description: '',
-      serverId: ''
-    }
+      serverId: '',
+    },
   });
 
-  // Form for environments (Step 2)
-  const environmentForm = useForm<EnvironmentFormValues>({
-    resolver: zodResolver(environmentSchema),
-    defaultValues: {
-      environments: [
-        { name: 'production', variables: [] },
-        { name: 'development', variables: [] }
-      ]
-    }
-  });
-
-  const handleBasicInfoSubmit = async (values: BasicInfoFormValues) => {
-    setProjectData({ ...projectData, ...values });
-    setStep(2);
+  const handleBasicSubmit = async (values: BasicInfoValues) => {
+    setBasicInfo(values);
+    setStep('environments');
   };
 
-  const handleEnvironmentSubmit = async (values: EnvironmentFormValues) => {
+  const handleEnvironmentSubmit = async () => {
+    if (!basicInfo) return;
+
     try {
-      setIsLoading(true);
-      // First create the project
-      const finalData: CreateProjectDto = {
-        ...projectData,
-        name: projectData.name!,
-        description: projectData.description!,
-        serverId: projectData.serverId!
-      };
-
-      const project = await projectsApi.create(finalData);
-
-      // Then create environments
-      for (const env of values.environments) {
-        await projectsApi.createEnvironment(project.id, {
+      const projectData = {
+        ...basicInfo,
+        environments: environments.map(env => ({
           name: env.name,
-          variables: env.variables
+          variables: env.variables,
+          resources: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }))
+      };
+      
+      const response = await projectsApi.create(projectData);
+      if (response) {
+        toast({
+          title: "Success",
+          description: `Project ${basicInfo.name} was created successfully`
+        });
+        navigate('/projects');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to create project"
         });
       }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create project"
+      });
+    }
+  };
 
+  const handleEnvironmentVariablesChange = (index: number, variables: EnvironmentVariable[]) => {
+    setEnvironments(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], variables };
+      return updated;
+    });
+  };
+
+  const handleFileUpload = async (file: File, envIndex: number) => {
+    try {
+      const content = await file.text();
+      const parsedEnv = parseEnvFile(content);
+      setEnvironments(prevEnvs => {
+        const newEnvs = [...prevEnvs];
+        newEnvs[envIndex].variables = parsedEnv;
+        return newEnvs;
+      });
       toast({
         title: "Success",
-        description: "Project created successfully"
+        description: `Successfully imported ${parsedEnv.length} variables from ${file.name}`
       });
-      navigate(`/projects/${project.id}/resources`);
-    } catch (err) {
+    } catch (error) {
       toast({
+        variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to create project",
-        variant: "destructive"
+        description: "Failed to import environment variables"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   return (
-    <div className="container max-w-3xl py-6 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Create New Project</h1>
-        <Progress value={step === 1 ? 33 : 66} className="h-2" />
-      </div>
+    <div className="container mx-auto py-6">
+      <Tabs value={step} onValueChange={(value) => setStep(value as 'basic' | 'environments')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="basic">Basic Information</TabsTrigger>
+          <TabsTrigger value="environments" disabled={!basicInfo}>Environments</TabsTrigger>
+        </TabsList>
 
-      {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>
-              Enter the basic details of your project
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...basicInfoForm}>
-              <form onSubmit={basicInfoForm.handleSubmit(handleBasicInfoSubmit)} className="space-y-6">
-                <FormField
-                  control={basicInfoForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="my-awesome-project" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        A unique name for your project
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <TabsContent value="basic">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create New Project</CardTitle>
+              <CardDescription>
+                Enter the basic information for your new project.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...basicForm}>
+                <form onSubmit={basicForm.handleSubmit(handleBasicSubmit)} className="space-y-4">
+                  <FormField
+                    control={basicForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={basicInfoForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe your project..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        A brief description of your project
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={basicForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={basicInfoForm.control}
-                  name="serverId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Server</FormLabel>
-                      <FormControl>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {servers?.map((server) => (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-medium">Select Server</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {isLoadingServers ? (
+                          <div>Loading servers...</div>
+                        ) : (
+                          servers?.map((server) => (
                             <Button
                               key={server.id}
                               type="button"
-                              variant={field.value === server.id ? 'default' : 'outline'}
-                              className="w-full h-24 flex flex-col gap-2"
-                              onClick={() => field.onChange(server.id)}
+                              variant={basicForm.watch('serverId') === server.id ? 'default' : 'outline'}
+                              className="w-full justify-start"
+                              onClick={() => basicForm.setValue('serverId', server.id)}
                             >
-                              <span className="text-lg">{server.name}</span>
-                              <span className="text-sm text-muted-foreground">{server.host}</span>
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">{server.name}</span>
+                                <span className="text-sm text-muted-foreground">{server.host}</span>
+                              </div>
                             </Button>
-                          ))}
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full h-24 flex flex-col gap-2"
-                            onClick={() => navigate('/servers/create')}
-                          >
-                            <span className="text-lg">Add Server</span>
+                          ))
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => navigate('/servers/create')}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Add Server</span>
                             <span className="text-sm text-muted-foreground">Configure a new server</span>
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Choose a server to deploy your project. You must add a server before creating a project.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/projects')}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={serversLoading}>Continue</Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
+                  <Button type="submit" className="w-full">Continue</Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {step === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Environments</CardTitle>
-            <CardDescription>
-              Configure your project environments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...environmentForm}>
-              <form onSubmit={environmentForm.handleSubmit(handleEnvironmentSubmit)} className="space-y-6">
-                <Tabs defaultValue="production">
-                  <TabsList>
-                    <TabsTrigger value="production">Production</TabsTrigger>
-                    <TabsTrigger value="development">Development</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="production" className="space-y-4">
-                    <FormField
-                      control={environmentForm.control}
-                      name="environments.0.variables"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Production Environment Variables</FormLabel>
-                          <FormControl>
-                            <EnvironmentVariablesEditor
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+        <TabsContent value="environments">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configure Environments</CardTitle>
+              <CardDescription>
+                Set up environment variables for your project. You can upload .env files or add variables manually.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {environments.map((env, index) => (
+                  <div key={env.name} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium capitalize">{env.name} Environment</h3>
+                      <Input
+                        type="file"
+                        accept=".env"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file, index);
+                        }}
+                      />
+                    </div>
+                    <EnvironmentVariablesEditor
+                      value={env.variables}
+                      onChange={(variables) => handleEnvironmentVariablesChange(index, variables)}
                     />
-                  </TabsContent>
+                  </div>
+                ))}
 
-                  <TabsContent value="development" className="space-y-4">
-                    <FormField
-                      control={environmentForm.control}
-                      name="environments.1.variables"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Development Environment Variables</FormLabel>
-                          <FormControl>
-                            <EnvironmentVariablesEditor
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </TabsContent>
-                </Tabs>
-
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                  >
+                <div className="flex justify-end space-x-4">
+                  <Button variant="outline" onClick={() => setStep('basic')}>
                     Back
                   </Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Creating...' : 'Create Project'}
+                  <Button onClick={handleEnvironmentSubmit}>
+                    Create Project
                   </Button>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 

@@ -4,6 +4,11 @@
  * Defines types and interfaces for projects and their resources in the application
  */
 
+import type { EnvironmentVariable, Environment } from './environment';
+
+// Re-export for backward compatibility
+export type { EnvironmentVariable, Environment };
+
 export enum ProjectType {
   NODEJS = 'nodejs',
   PYTHON = 'python',
@@ -38,25 +43,9 @@ export enum ServiceType {
 
 export enum ProjectStatus {
   CREATED = 'created',
-  DEPLOYING = 'deploying',
   RUNNING = 'running',
   STOPPED = 'stopped',
-  FAILED = 'failed'
-}
-
-export interface EnvironmentVariable {
-  key: string;
-  value: string;
-  isSecret: boolean;
-}
-
-export interface Environment {
-  id: string;
-  name: string;
-  variables: EnvironmentVariable[];
-  resources: Resource[];
-  createdAt: string;
-  updatedAt: string;
+  ERROR = 'error'
 }
 
 export interface Resource {
@@ -88,12 +77,12 @@ export interface Resource {
 export interface Project {
   id: string;
   name: string;
-  description: string;
-  serverId: string;
-  ownerId: string;
+  description?: string;
   status: ProjectStatus;
+  ownerId: string;
+  serverId?: string;
+  resources: string[]; // Resource IDs
   environments: Environment[];
-  resources: Resource[];
   environmentVariables?: EnvironmentVariable[];
   createdAt: string;
   updatedAt: string;
@@ -101,9 +90,9 @@ export interface Project {
 
 export interface CreateProjectDto {
   name: string;
-  description: string;
-  serverId: string;
-  environmentVariables?: EnvironmentVariable[];
+  description?: string;
+  type?: string;
+  serverId?: string;
 }
 
 export interface CreateResourceDto {
@@ -129,4 +118,5 @@ export interface CreateResourceDto {
 export interface CreateEnvironmentDto {
   name: string;
   variables: EnvironmentVariable[];
+  resources: Resource[];
 } 

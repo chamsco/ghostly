@@ -22,14 +22,15 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  fullName?: string;
   isAdmin: boolean;
-  status: 'active' | 'inactive';
-  lastActive: string;
+  status: UserStatus;
+  requiresAdditionalAuth: boolean;
+  twoFactorEnabled: boolean;
+  lastActive?: string;
+  isBiometricsEnabled: boolean;
   createdAt: string;
   updatedAt: string;
-  enabledAuthMethods?: string[];
-  requiresAdditionalAuth?: boolean;
-  twoFactorEnabled?: boolean;
-  isBiometricsEnabled?: boolean;
 } 

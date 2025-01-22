@@ -26,9 +26,11 @@ export function ProjectSettings() {
       if (!id) return;
       try {
         const data = await projectsApi.get(id);
-        setProject(data);
-        setName(data.name);
-        setDescription(data.description);
+        if (data) {
+          setProject(data);
+          setName(data.name);
+          setDescription(data.description ?? '');
+        }
       } catch (err) {
         toast({
           title: "Error",

@@ -16,7 +16,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import { Dashboard } from '@/pages/Dashboard';
 import { Projects } from '@/pages/Projects';
-import { ProjectCreate } from '@/pages/ProjectCreate';
+import  ProjectCreate  from '@/pages/ProjectCreate';
 import { ProjectDetail } from '@/pages/ProjectDetail';
 import { ProjectResources } from '@/pages/ProjectResources';
 import Settings from '@/pages/Settings';

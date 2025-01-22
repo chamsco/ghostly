@@ -78,7 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('🔄 Fetching current user data...');
         const userData = await authApi.getCurrentUser();
         console.log('✅ User data retrieved:', { id: userData.id, username: userData.username });
-        setUser(userData);
+        setUser({
+          ...userData,
+          status: UserStatus.ACTIVE,
+          lastActive: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
       } catch (err) {
         console.error('❌ Auth check failed:', err);
         localStorage.removeItem('accessToken');
@@ -122,9 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         ...userData,
         status: UserStatus.ACTIVE,
-        isAdmin: userData.role === 'admin',
         lastActive: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
 
@@ -179,9 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         ...userData,
         status: UserStatus.ACTIVE,
-        isAdmin: userData.role === 'admin',
         lastActive: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
 

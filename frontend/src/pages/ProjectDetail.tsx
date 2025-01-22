@@ -8,7 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import type { Project } from '@/types/project';
+import type { Project, Resource } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { ResourceList } from '@/features/resources/components/resource-list';
 import { ResourceCreate } from '@/features/resources/components/resource-create';
@@ -22,6 +22,7 @@ export function ProjectDetail() {
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedResources, setLoadedResources] = useState<Resource[]>([]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -44,6 +45,17 @@ export function ProjectDetail() {
 
     fetchProject();
   }, [id, navigate, toast]);
+
+  useEffect(() => {
+    const loadResources = async () => {
+      if (!project) return;
+      const resources = await Promise.all(
+        project.resources.map(id => projectsApi.getResource(id))
+      );
+      setLoadedResources(resources.filter((r): r is Resource => r !== null));
+    };
+    loadResources();
+  }, [project]);
 
   const handleEnvironmentVariablesChange = async (environmentVariables: Project['environmentVariables']) => {
     if (!project) return;
@@ -111,20 +123,20 @@ export function ProjectDetail() {
             </CardHeader>
             <CardContent>
               <ResourceList
-                resources={project.resources}
+                resources={loadedResources}
                 onResourceUpdated={(resource) => {
-                  setProject({
-                    ...project,
-                    resources: project.resources.map(r =>
-                      r.id === resource.id ? resource : r
-                    )
-                  });
+                  setLoadedResources(prev => 
+                    prev.map(r => r.id === resource.id ? resource : r)
+                  );
                 }}
                 onResourceDeleted={(resourceId) => {
-                  setProject({
-                    ...project,
-                    resources: project.resources.filter(r => r.id !== resourceId)
-                  });
+                  setLoadedResources(prev => 
+                    prev.filter(r => r.id !== resourceId)
+                  );
+                  setProject(prev => prev ? {
+                    ...prev,
+                    resources: prev.resources.filter(id => id !== resourceId)
+                  } : null);
                 }}
               />
               <div className="mt-4">
@@ -133,7 +145,7 @@ export function ProjectDetail() {
                   onResourceCreated={(resource) => {
                     setProject({
                       ...project,
-                      resources: [...project.resources, resource]
+                      resources: [...project.resources, resource.id]
                     });
                   }}
                 />

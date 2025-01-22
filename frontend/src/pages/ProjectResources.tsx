@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { projectsApi } from '@/services/api.service';
-import { Project, Environment } from '@/types/project';
+import { Project } from '@/types/project';
+//import { Resource } from '@/types/project';
+import { Environment } from '@/types/environment';
 import { ResourceCreate } from '@/features/resources/components/resource-create';
 
 export function ProjectResources() {
@@ -41,6 +43,11 @@ export function ProjectResources() {
       title: "Success",
       description: `Resource added to ${environmentName} environment`
     });
+  };
+
+  const handleDeleteResource = (resourceId: string) => {
+    // Implement the delete logic here
+    console.log(`Deleting resource with id: ${resourceId}`);
   };
 
   if (isLoading || !project) {
@@ -84,45 +91,30 @@ export function ProjectResources() {
             {project.environments.map((env: Environment) => (
               <TabsContent key={env.name} value={env.name} className="space-y-4">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">
-                      {env.name} Resources
-                    </h3>
-                    <ResourceCreate
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium capitalize">{env.name} Resources</h3>
+                    <ResourceCreate 
                       projectId={project.id}
                       onResourceCreated={() => handleResourceCreated(env.name)}
                     />
                   </div>
-
-                  {env.resources?.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-8">
-                        <div className="text-center text-muted-foreground">
-                          No resources added yet
+                  {env.resources?.map((resource: any) => (
+                    <Card key={resource.id}>
+                      <CardContent className="py-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="font-medium">{resource.name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {resource.type}
+                            </p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteResource(resource.id)}>
+                            Delete
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
-                  ) : (
-                    <div className="grid gap-4">
-                      {env.resources?.map((resource) => (
-                        <Card key={resource.id}>
-                          <CardContent className="py-4">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <h4 className="font-medium">{resource.name}</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  {resource.type}
-                                </p>
-                              </div>
-                              <Button variant="outline" size="sm">
-                                Configure
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
               </TabsContent>
             ))}

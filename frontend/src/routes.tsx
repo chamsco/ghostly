@@ -30,7 +30,7 @@ import { Projects } from '@/pages/Projects';
 import { Users } from '@/pages/Users';
 import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
-import { ProjectCreate } from '@/pages/ProjectCreate';
+import  ProjectCreate  from '@/pages/ProjectCreate';
 import { ProjectSettings } from '@/pages/ProjectSettings';
 import { ProjectResources } from '@/pages/ProjectResources';
 import { Servers } from '@/pages/Servers';

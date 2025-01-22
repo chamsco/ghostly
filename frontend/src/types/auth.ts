@@ -1,4 +1,4 @@
-import { UserRole } from './user';
+import { User, UserRole } from './user';
 
 export interface RegisterData {
   fullName: string;
@@ -15,23 +15,14 @@ export interface LoginData {
 
 export interface AuthResponse {
   access_token: string;
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    fullName: string;
-    role: UserRole;
-    twoFactorEnabled: boolean;
-    isBiometricsEnabled: boolean;
-    requiresAdditionalAuth: boolean;
-  };
+  user: User;
   message: string;
   requiresTwoFactor?: boolean;
 }
 
 export interface TwoFactorResponse {
-  secret: string;
   qrCode: string;
+  secret: string;
 }
 
 export interface BiometricRegistrationOptions {
@@ -56,4 +47,16 @@ export interface CreateUserDto {
   password: string;
   fullName: string;
   role?: UserRole;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
 } 

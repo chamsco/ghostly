@@ -12,8 +12,11 @@ import axios, { AxiosError } from 'axios';
 import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
-import type { Project, CreateProjectDto, Resource, Environment } from '@/types/project';
+import type { Project, CreateProjectDto, Resource, CreateResourceDto } from '@/types/project';
+import type { Environment, CreateEnvironmentDto } from '@/types/environment';
 import type { Server, CreateServerDto } from '@/types/server';
+import { apiInstance } from '@/lib/axios';
+import type { RegisterDto, LoginDto } from '@/types/auth';
 
 // Get the base URL from environment or use default
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
@@ -211,57 +214,165 @@ export const authApi = {
   }
 };
 
-// Projects API endpoints
+/**
+ * Projects API endpoints
+ */
 export const projectsApi = {
-  create: async (data: CreateProjectDto): Promise<Project> => {
-    const response = await api.post('/projects', data);
-    return response.data;
-  },
   list: async (): Promise<Project[]> => {
-    const response = await api.get('/projects');
-    return response.data;
+    try {
+      const response = await apiInstance.get<Project[]>('/projects');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      return [];
+    }
   },
-  get: async (id: string): Promise<Project> => {
-    const response = await api.get(`/projects/${id}`);
-    return response.data;
+
+  get: async (id: string): Promise<Project | null> => {
+    try {
+      const response = await apiInstance.get<Project>(`/projects/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch project:', error);
+      return null;
+    }
   },
-  update: async (id: string, data: Partial<Project>): Promise<Project> => {
-    const response = await api.patch(`/projects/${id}`, data);
-    return response.data;
+
+  create: async (data: CreateProjectDto): Promise<Project | null> => {
+    try {
+      const response = await apiInstance.post<Project>('/projects', data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      return null;
+    }
   },
+
+  update: async (id: string, data: Partial<Project>): Promise<Project | null> => {
+    try {
+      const response = await apiInstance.patch<Project>(`/projects/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      return null;
+    }
+  },
+
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/projects/${id}`);
+    try {
+      await apiInstance.delete(`/projects/${id}`);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+    }
   },
-  listServers: async (): Promise<Server[]> => {
-    const response = await api.get('/servers');
-    return response.data;
+
+  start: async (id: string): Promise<Project | null> => {
+    try {
+      const response = await apiInstance.post<Project>(`/projects/${id}/deploy`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to start project:', error);
+      return null;
+    }
   },
+
+  stop: async (id: string): Promise<Project | null> => {
+    try {
+      const response = await apiInstance.post<Project>(`/projects/${id}/stop`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to stop project:', error);
+      return null;
+    }
+  },
+
   // Resource methods
-  createResource: async (projectId: string, data: any): Promise<Resource> => {
-    const response = await api.post(`/projects/${projectId}/resources`, data);
-    return response.data;
+  createResource: async (projectId: string, data: CreateResourceDto): Promise<Resource | null> => {
+    try {
+      const response = await apiInstance.post<Resource>(`/projects/${projectId}/resources`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create resource:', error);
+      return null;
+    }
   },
-  updateResource: async (resourceId: string, data: Partial<Resource>): Promise<Resource> => {
-    const response = await api.patch(`/resources/${resourceId}`, data);
-    return response.data;
+
+  getResources: async (projectId: string): Promise<Resource[]> => {
+    try {
+      const response = await apiInstance.get<Resource[]>(`/projects/${projectId}/resources`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch resources:', error);
+      return [];
+    }
   },
+
+  updateResource: async (resourceId: string, data: Partial<Resource>): Promise<Resource | null> => {
+    try {
+      const response = await apiInstance.patch<Resource>(`/resources/${resourceId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update resource:', error);
+      return null;
+    }
+  },
+
   deleteResource: async (resourceId: string): Promise<void> => {
-    await api.delete(`/resources/${resourceId}`);
+    try {
+      await apiInstance.delete(`/resources/${resourceId}`);
+    } catch (error) {
+      console.error('Failed to delete resource:', error);
+    }
   },
+
   // Environment methods
-  createEnvironment: async (projectId: string, data: any): Promise<Environment> => {
-    const response = await api.post(`/projects/${projectId}/environments`, data);
-    return response.data;
+  createEnvironment: async (projectId: string, data: CreateEnvironmentDto): Promise<Environment | null> => {
+    try {
+      const response = await apiInstance.post<Environment>(`/projects/${projectId}/environments`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create environment:', error);
+      return null;
+    }
   },
-  updateEnvironment: async (environmentId: string, data: Partial<Environment>): Promise<Environment> => {
-    const response = await api.patch(`/environments/${environmentId}`, data);
-    return response.data;
+
+  getEnvironments: async (projectId: string): Promise<Environment[]> => {
+    try {
+      const response = await apiInstance.get<Environment[]>(`/projects/${projectId}/environments`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch environments:', error);
+      return [];
+    }
   },
+
+  updateEnvironment: async (environmentId: string, data: Partial<Environment>): Promise<Environment | null> => {
+    try {
+      const response = await apiInstance.patch<Environment>(`/environments/${environmentId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update environment:', error);
+      return null;
+    }
+  },
+
   deleteEnvironment: async (environmentId: string): Promise<void> => {
-    await api.delete(`/environments/${environmentId}`);
+    try {
+      await apiInstance.delete(`/environments/${environmentId}`);
+    } catch (error) {
+      console.error('Failed to delete environment:', error);
+    }
   },
-  start: (id: string) => api.post<Project>(`/projects/${id}/deploy`).then(res => res.data),
-  stop: (id: string) => api.post<Project>(`/projects/${id}/stop`).then(res => res.data)
+
+  getResource: async (id: string): Promise<Resource | null> => {
+    try {
+      const { data } = await authApiInstance.get(`/resources/${id}`);
+      return data;
+    } catch (err) {
+      handleAxiosError(err);
+      return null;
+    }
+  }
 };
 
 export const serversApi = {
@@ -288,4 +399,51 @@ export const serversApi = {
     const response = await api.get(`/servers/${id}/check-connection`);
     return response.data;
   }
+};
+
+/**
+ * Authentication API endpoints
+ */
+export const authApiService = {
+  async register(data: RegisterDto): Promise<{ access_token: string }> {
+    try {
+      const response = await authApiInstance.post<{ access_token: string }>('/register', data);
+      return response.data;
+    } catch (error) {
+      throw handleAxiosError(error);
+    }
+  },
+
+  async login(data: LoginDto): Promise<{ access_token: string }> {
+    try {
+      const response = await authApiInstance.post<{ access_token: string }>('/login', data);
+      return response.data;
+    } catch (error) {
+      throw handleAxiosError(error);
+    }
+  },
+
+  async me(): Promise<User> {
+    try {
+      const response = await authApiInstance.get<User>('/me');
+      return response.data;
+    } catch (error) {
+      throw handleAxiosError(error);
+    }
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await authApiInstance.post('/logout');
+      localStorage.removeItem('accessToken');
+    } catch (error) {
+      throw handleAxiosError(error);
+    }
+  }
+};
+
+// Helper function to handle axios errors
+const handleAxiosError = (error: any): never => {
+  const message = error.response?.data?.message || error.message || 'An error occurred';
+  throw new Error(message);
 };

@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/auth.context';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { UserStatus } from '@/types/user';
 
 // Create a users API instance
 const usersApi = axios.create({
@@ -109,7 +110,7 @@ export function Users() {
       
       setUsers(prevUsers => 
         prevUsers.map(user => 
-          user.id === userId ? { ...user, status: newStatus } : user
+          user.id === userId ? { ...user, status: newStatus === 'active' ? UserStatus.ACTIVE : UserStatus.INACTIVE } : user
         )
       );
 
@@ -211,7 +212,7 @@ export function Users() {
                   {user.status}
                 </span>
                 <span className="text-muted-foreground">
-                  Last active: {new Date(user.lastActive).toLocaleDateString()}
+                  Last active: {user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never'}
                 </span>
               </div>
             </div>

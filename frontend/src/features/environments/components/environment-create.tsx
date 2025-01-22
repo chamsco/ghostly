@@ -43,13 +43,18 @@ export function EnvironmentCreate({ projectId, onEnvironmentCreated }: Props) {
   const handleSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
-      const environment = await projectsApi.createEnvironment(projectId, values);
-      onEnvironmentCreated(environment);
-      setIsOpen(false);
-      toast({
-        title: "Success",
-        description: "Environment created successfully"
+      const environment = await projectsApi.createEnvironment(projectId, {
+        ...values,
+        resources: []
       });
+      if (environment) {
+        onEnvironmentCreated(environment);
+        setIsOpen(false);
+        toast({
+          title: "Success",
+          description: "Environment created successfully"
+        });
+      }
     } catch (err) {
       toast({
         title: "Error",

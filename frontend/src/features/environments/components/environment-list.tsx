@@ -34,11 +34,13 @@ export function EnvironmentList({ environments, onEnvironmentUpdated, onEnvironm
   const handleVariablesChange = async (environmentId: string, variables: Environment['variables']) => {
     try {
       const environment = await projectsApi.updateEnvironment(environmentId, { variables });
-      onEnvironmentUpdated(environment);
-      toast({
-        title: "Success",
-        description: "Environment variables updated successfully"
-      });
+      if (environment) {
+        onEnvironmentUpdated(environment);
+        toast({
+          title: "Success",
+          description: "Environment variables updated successfully"
+        });
+      }
     } catch (err) {
       toast({
         title: "Error",
