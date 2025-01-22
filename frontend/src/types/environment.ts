@@ -1,7 +1,10 @@
 export interface EnvironmentVariable {
+  id: string;
   key: string;
   value: string;
   isSecret: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Environment {

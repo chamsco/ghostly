@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useServers } from '@/hooks/use-servers';
 import type { EnvironmentVariable } from '@/types/environment';
 import type { Environment } from '@/types/environment';
+import { generateUUID } from '@/utils/uuid';
 
 // Form validation schemas for each step
 const basicInfoSchema = z.object({
@@ -64,7 +65,7 @@ export default function ProjectCreate() {
   const [basicInfo, setBasicInfo] = useState<BasicInfoValues>();
   const [environments, setEnvironments] = useState<Environment[]>([
     { 
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: 'production', 
       variables: [],
       resources: [],
@@ -72,7 +73,7 @@ export default function ProjectCreate() {
       updatedAt: new Date().toISOString()
     },
     {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: 'development', 
       variables: [],
       resources: [],

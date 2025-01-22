@@ -1,10 +1,12 @@
-//import { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-//import { Switch } from '@/components/ui/switch';
-import { EnvironmentVariable } from '@/types/project';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
+import type { EnvironmentVariable } from '@/types/environment';
+import { generateUUID } from '@/utils/uuid';
+import { Checkbox } from '@/components/ui/checkbox';
 import { X } from 'lucide-react';
 
 interface Props {
@@ -28,7 +30,15 @@ const isSecretKey = (key: string): boolean => {
 
 export function EnvironmentVariablesEditor({ value = [], onChange }: Props) {
   const handleAddVariable = () => {
-    onChange([...value, { key: '', value: '', isSecret: false }]);
+    const newVariable: EnvironmentVariable = {
+      id: generateUUID(),
+      key: '',
+      value: '',
+      isSecret: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    onChange([...value, newVariable]);
   };
 
   const handleRemoveVariable = (index: number) => {
