@@ -83,12 +83,24 @@ export function ProjectCreate() {
   const handleEnvironmentSubmit = async (values: EnvironmentFormValues) => {
     try {
       setIsLoading(true);
+      // First create the project
       const finalData: CreateProjectDto = {
         ...projectData,
-        environments: values.environments
-      } as CreateProjectDto;
+        name: projectData.name!,
+        description: projectData.description!,
+        serverId: projectData.serverId!
+      };
 
       const project = await projectsApi.create(finalData);
+
+      // Then create environments
+      for (const env of values.environments) {
+        await projectsApi.createEnvironment(project.id, {
+          name: env.name,
+          variables: env.variables
+        });
+      }
+
       toast({
         title: "Success",
         description: "Project created successfully"
@@ -168,16 +180,6 @@ export function ProjectCreate() {
                       <FormLabel>Server</FormLabel>
                       <FormControl>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <Button
-                            type="button"
-                            variant={field.value === 'localhost' ? 'default' : 'outline'}
-                            className="w-full h-24 flex flex-col gap-2"
-                            onClick={() => field.onChange('localhost')}
-                          >
-                            <span className="text-lg">Localhost</span>
-                            <span className="text-sm text-muted-foreground">127.0.0.1</span>
-                          </Button>
-                          
                           {servers?.map((server) => (
                             <Button
                               key={server.id}
@@ -203,7 +205,7 @@ export function ProjectCreate() {
                         </div>
                       </FormControl>
                       <FormDescription>
-                        Choose a server to deploy your project
+                        Choose a server to deploy your project. You must add a server before creating a project.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

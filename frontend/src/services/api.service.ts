@@ -16,12 +16,12 @@ import type { Project, CreateProjectDto, Resource, Environment } from '@/types/p
 import type { Server, CreateServerDto } from '@/types/server';
 
 // Get the base URL from environment or use default
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
 const API_TIMEOUT = 10000; // 10 seconds
 
 // Create axios instance for auth-related endpoints
 const authApiInstance = axios.create({
-  baseURL: BASE_URL ? `${BASE_URL}/api/auth` : '/api/auth',
+  baseURL: `${BASE_URL}/api/auth`,
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
@@ -30,7 +30,7 @@ const authApiInstance = axios.create({
 
 // Create axios instance for protected endpoints
 export const api = axios.create({
-  baseURL: BASE_URL ? `${BASE_URL}/api` : '/api',
+  baseURL: `${BASE_URL}/api`,
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
