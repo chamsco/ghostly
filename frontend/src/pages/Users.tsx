@@ -18,7 +18,7 @@ import { UserStatus } from '@/types/user';
 
 // Create a users API instance
 const usersApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
