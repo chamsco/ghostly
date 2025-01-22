@@ -1,14 +1,14 @@
-//import { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useServers } from '@/hooks/use-servers';
-//import { Server } from '@/types/server';
-import { NewServerDialog } from '@/components/servers/new-server-dialog';
+import { ServerCreate } from './ServerCreate';
 
 export function Servers() {
   const { servers, isLoading, error, refetch } = useServers();
   const { toast } = useToast();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const handleServerCreated = () => {
     refetch();
@@ -49,7 +49,9 @@ export function Servers() {
           <h1 className="text-3xl font-bold">Servers</h1>
           <p className="text-muted-foreground">Manage your deployment servers</p>
         </div>
-        <NewServerDialog onSuccess={handleServerCreated} />
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Add Server
+        </Button>
       </div>
 
       {servers.length === 0 ? (
@@ -97,19 +99,17 @@ export function Servers() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex justify-end space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                  >
-                    Configure
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <ServerCreate 
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={handleServerCreated}
+      />
     </div>
   );
 } 
