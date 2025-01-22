@@ -93,6 +93,7 @@ export interface CreateProjectDto {
   description?: string;
   type?: string;
   serverId?: string;
+  environments: CreateEnvironmentDto[];
 }
 
 export interface CreateResourceDto {

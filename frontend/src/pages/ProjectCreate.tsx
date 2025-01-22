@@ -18,15 +18,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 //import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-//import { CreateProjectDto } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 //import { Progress } from '@/components/ui/progress';
 import { useServers } from '@/hooks/use-servers';
-import type { EnvironmentVariable } from '@/types/environment';
-import type { Environment } from '@/types/environment';
-import { generateUUID } from '@/utils/uuid';
+import type { Environment, EnvironmentVariable } from '@/types/environment';
+import { generateUUID } from '@/lib/utils';
+import type { CreateProjectDto, CreateEnvironmentDto } from '@/types/project';
 
 // Form validation schemas for each step
 const basicInfoSchema = z.object({
@@ -86,6 +85,7 @@ export default function ProjectCreate() {
     }
   ]);
   const { servers, isLoading: isLoadingServers } = useServers();
+  const [isLoading, setIsLoading] = useState(false);
 
   const basicForm = useForm<BasicInfoValues>({
     resolver: zodResolver(basicInfoSchema),
@@ -105,34 +105,37 @@ export default function ProjectCreate() {
     if (!basicInfo) return;
 
     try {
-      const projectData = {
-        ...basicInfo,
-        environments: environments.map(env => ({
-          name: env.name,
-          variables: env.variables.map(v => ({
-            key: v.key.trim(),
-            value: v.value.trim(),
-            isSecret: v.isSecret || isSecretKey(v.key)
-          })),
-          resources: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }))
-      };
+      setIsLoading(true);
+      const now = new Date().toISOString();
       
-      const response = await projectsApi.create(projectData);
-      if (response) {
+      const processedEnvironments: CreateEnvironmentDto[] = environments.map(env => ({
+        name: env.name,
+        variables: env.variables.map((variable: EnvironmentVariable) => ({
+          id: generateUUID(),
+          key: variable.key.trim(),
+          value: variable.value.trim(),
+          isSecret: variable.isSecret || isSecretKey(variable.key),
+          createdAt: now,
+          updatedAt: now
+        })),
+        resources: []
+      }));
+
+      const projectData: CreateProjectDto = {
+        name: basicInfo.name,
+        description: basicInfo.description,
+        serverId: basicInfo.serverId,
+        environments: processedEnvironments
+      };
+
+      const project = await projectsApi.create(projectData);
+
+      if (project) {
         toast({
           title: "Success",
-          description: `Project ${basicInfo.name} was created successfully`
+          description: "Project created successfully"
         });
-        navigate('/projects');
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to create project"
-        });
+        navigate(`/projects/${project.id}`);
       }
     } catch (error) {
       console.error('Project creation error:', error);
@@ -141,6 +144,8 @@ export default function ProjectCreate() {
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create project"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
