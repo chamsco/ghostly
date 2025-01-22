@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Server } from './entities/server.entity';
 import { CreateServerDto } from './dto/create-server.dto';
+import { NodeSSH } from 'node-ssh';
 
 @Injectable()
 export class ServersService {
@@ -40,30 +41,9 @@ export class ServersService {
   /**
    * Create a new server
    */
-  async create(serverData: CreateServerDto): Promise<Server> {
-    // Check if server with same name exists
-    const existingServer = await this.serverRepository.findOne({
-      where: { name: serverData.name }
-    });
-
-    if (existingServer) {
-      throw new ConflictException(`Server with name ${serverData.name} already exists`);
-    }
-
-    // Check if server with same host exists
-    const existingHost = await this.serverRepository.findOne({
-      where: { host: serverData.host }
-    });
-
-    if (existingHost) {
-      throw new ConflictException(`Server with host ${serverData.host} already exists`);
-    }
-
-    const server = this.serverRepository.create({
-      ...serverData,
-      status: 'offline'
-    });
-
+  async create(createServerDto: CreateServerDto): Promise<Server> {
+    const server = this.serverRepository.create(createServerDto);
+    await this.testConnection(server);
     return this.serverRepository.save(server);
   }
 
@@ -102,14 +82,34 @@ export class ServersService {
   /**
    * Delete a server
    */
-  async delete(id: string): Promise<void> {
-    const server = await this.findOne(id);
-    await this.serverRepository.remove(server);
+  async remove(id: string): Promise<void> {
+    const result = await this.serverRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Server with ID ${id} not found`);
+    }
+  }
+
+  async testConnection(server: Server): Promise<boolean> {
+    const ssh = new NodeSSH();
+    try {
+      await ssh.connect({
+        host: server.host,
+        port: server.port,
+        username: server.username,
+        privateKey: server.privateKey,
+      });
+      server.status = 'online';
+      return true;
+    } catch (error) {
+      server.status = 'offline';
+      return false;
+    } finally {
+      ssh.dispose();
+    }
   }
 
   async checkConnection(id: string): Promise<boolean> {
     const server = await this.findOne(id);
-    // TODO: Implement SSH connection check
-    return true;
+    return this.testConnection(server);
   }
 } 

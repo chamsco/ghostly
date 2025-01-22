@@ -32,6 +32,7 @@ import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import { ProjectCreate } from '@/pages/ProjectCreate';
 import { ProjectSettings } from '@/pages/ProjectSettings';
+import { ProjectResources } from '@/pages/ProjectResources';
 
 // Configure React Query client with custom defaults
 // - Disable automatic retries on failed requests
@@ -75,6 +76,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:id/settings',
         element: <ProjectSettings />
+      },
+      {
+        path: 'projects/:projectId/resources',
+        element: <ProjectResources />
       },
       {
         path: 'users',

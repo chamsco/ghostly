@@ -1,39 +1,40 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { ServerForm } from './server-form';
-import { useState } from 'react';
 
 interface NewServerDialogProps {
   onSuccess?: () => void;
 }
 
 export function NewServerDialog({ onSuccess }: NewServerDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const handleSuccess = () => {
-    setIsOpen(false);
+    setOpen(false);
     onSuccess?.();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>New Server</Button>
+        <Button>Add Server</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>New Server</DialogTitle>
+          <DialogTitle>Add New Server</DialogTitle>
+          <DialogDescription>
+            Add a new server for deployment. Make sure you have SSH access to the server.
+          </DialogDescription>
         </DialogHeader>
-        <ServerForm
-          onSuccess={handleSuccess}
-          onCancel={() => setIsOpen(false)}
-        />
+        <ServerForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );

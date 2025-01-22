@@ -7,7 +7,7 @@
  * - Environment variables input
  * - .env file upload
  */
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,75 +17,79 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { CreateProjectDto } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
-import { useServers } from '@/hooks/use-servers';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { FileUpload } from '@/components/file-upload';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
-// Form validation schema
-const formSchema = z.object({
+// Form validation schemas for each step
+const basicInfoSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters'),
-  description: z.string(),
-  serverId: z.string(),
-  environmentVariables: z.array(z.object({
-    key: z.string(),
-    value: z.string(),
-    isSecret: z.boolean()
-  })).default([])
+  description: z.string()
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const environmentSchema = z.object({
+  environments: z.array(z.object({
+    name: z.string(),
+    variables: z.array(z.object({
+      key: z.string(),
+      value: z.string(),
+      isSecret: z.boolean()
+    })).default([])
+  }))
+});
+
+type BasicInfoFormValues = z.infer<typeof basicInfoSchema>;
+type EnvironmentFormValues = z.infer<typeof environmentSchema>;
 
 export function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const { servers, isLoading: isLoadingServers } = useServers();
+  const [projectData, setProjectData] = useState<Partial<CreateProjectDto>>({});
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  // Form for basic info (Step 1)
+  const basicInfoForm = useForm<BasicInfoFormValues>({
+    resolver: zodResolver(basicInfoSchema),
     defaultValues: {
       name: '',
-      description: '',
-      serverId: '',
-      environmentVariables: []
+      description: ''
     }
   });
 
-  const handleEnvFileUpload = useCallback((content: string) => {
-    const envVars = content.split('\n')
-      .filter(line => line.trim() && !line.startsWith('#'))
-      .map(line => {
-        const [key, value] = line.split('=').map(part => part.trim());
-        return {
-          key,
-          value,
-          isSecret: key.toLowerCase().includes('secret') || key.toLowerCase().includes('password')
-        };
-      });
-    
-    form.setValue('environmentVariables', envVars);
-  }, [form]);
+  // Form for environments (Step 2)
+  const environmentForm = useForm<EnvironmentFormValues>({
+    resolver: zodResolver(environmentSchema),
+    defaultValues: {
+      environments: [
+        { name: 'production', variables: [] },
+        { name: 'development', variables: [] }
+      ]
+    }
+  });
 
-  const handleSubmit = async (values: FormValues) => {
+  const handleBasicInfoSubmit = async (values: BasicInfoFormValues) => {
+    setProjectData({ ...projectData, ...values });
+    setStep(2);
+  };
+
+  const handleEnvironmentSubmit = async (values: EnvironmentFormValues) => {
     try {
       setIsLoading(true);
-      const projectData: CreateProjectDto = {
-        name: values.name,
-        description: values.description,
-        serverId: values.serverId,
-        environmentVariables: values.environmentVariables
-      };
+      const finalData: CreateProjectDto = {
+        ...projectData,
+        environments: values.environments
+      } as CreateProjectDto;
 
-      await projectsApi.create(projectData);
+      const project = await projectsApi.create(finalData);
       toast({
         title: "Success",
         description: "Project created successfully"
       });
-      navigate('/projects');
+      navigate(`/projects/${project.id}/resources`);
     } catch (err) {
       toast({
         title: "Error",
@@ -98,114 +102,149 @@ export function ProjectCreate() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Project</CardTitle>
-          <CardDescription>
-            Create a new project and configure its resources later
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="my-project" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      A unique name for your project (lowercase letters, numbers, and hyphens only)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+    <div className="container max-w-3xl py-6 space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold">Create New Project</h1>
+        <Progress value={step === 1 ? 33 : 66} className="h-2" />
+      </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Describe your project..."
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      A brief description of your project
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="serverId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Target Server</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+      {step === 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+            <CardDescription>
+              Enter the basic details of your project
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...basicInfoForm}>
+              <form onSubmit={basicInfoForm.handleSubmit(handleBasicInfoSubmit)} className="space-y-6">
+                <FormField
+                  control={basicInfoForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a server" />
-                        </SelectTrigger>
+                        <Input placeholder="my-awesome-project" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {isLoadingServers ? (
-                          <SelectItem value="loading" disabled>Loading servers...</SelectItem>
-                        ) : servers?.map(server => (
-                          <SelectItem key={server.id} value={server.id}>
-                            {server.name} ({server.host})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Choose the server where your project will be managed
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-4">
-                <FormLabel>Environment Variables</FormLabel>
-                <FileUpload
-                  accept=".env"
-                  onUpload={handleEnvFileUpload}
-                  description="Upload a .env file to import environment variables"
+                      <FormDescription>
+                        A unique name for your project
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <EnvironmentVariablesEditor
-                  value={form.watch('environmentVariables')}
-                  onChange={(vars) => form.setValue('environmentVariables', vars)}
-                />
-              </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/projects')}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  Create Project
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                <FormField
+                  control={basicInfoForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe your project..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        A brief description of your project
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/projects')}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">Continue</Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Environments</CardTitle>
+            <CardDescription>
+              Configure your project environments
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...environmentForm}>
+              <form onSubmit={environmentForm.handleSubmit(handleEnvironmentSubmit)} className="space-y-6">
+                <Tabs defaultValue="production">
+                  <TabsList>
+                    <TabsTrigger value="production">Production</TabsTrigger>
+                    <TabsTrigger value="development">Development</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="production" className="space-y-4">
+                    <FormField
+                      control={environmentForm.control}
+                      name="environments.0.variables"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Production Environment Variables</FormLabel>
+                          <FormControl>
+                            <EnvironmentVariablesEditor
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="development" className="space-y-4">
+                    <FormField
+                      control={environmentForm.control}
+                      name="environments.1.variables"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Development Environment Variables</FormLabel>
+                          <FormControl>
+                            <EnvironmentVariablesEditor
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </TabsContent>
+                </Tabs>
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStep(1)}
+                  >
+                    Back
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Creating...' : 'Create Project'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 } 

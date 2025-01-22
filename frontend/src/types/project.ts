@@ -54,7 +54,7 @@ export interface Environment {
   id: string;
   name: string;
   variables: EnvironmentVariable[];
-  projectId: string;
+  resources: Resource[];
   createdAt: string;
   updatedAt: string;
 }

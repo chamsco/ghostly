@@ -1,194 +1,233 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ProjectType } from '@/types/project';
-import { CreateServerDto } from '@/types/server';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/components/ui/use-toast';
 import { useServers } from '@/hooks/use-servers';
 
-const serverSchema = z.object({
+const serverFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
-  host: z.string().min(1, 'IP Address/Domain is required'),
-  port: z.number().int().min(1).max(65535).default(22),
-  username: z.string().min(1, 'Username is required').default('root'),
-  privateKey: z.string().min(1, 'Private Key is required'),
+  host: z.string().min(1, 'Host is required'),
+  port: z.coerce.number().int().min(1).max(65535).default(22),
+  username: z.string().min(1, 'Username is required'),
+  privateKey: z.string().min(1, 'Private key is required'),
   isBuildServer: z.boolean().default(false),
   isSwarmManager: z.boolean().default(false),
   isSwarmWorker: z.boolean().default(false),
-  supportedTypes: z.array(z.nativeEnum(ProjectType)).default([])
 });
 
-type ServerFormData = z.infer<typeof serverSchema>;
+type ServerFormValues = z.infer<typeof serverFormSchema>;
 
 interface ServerFormProps {
   onSuccess?: () => void;
-  onCancel?: () => void;
 }
 
-export function ServerForm({ onSuccess, onCancel }: ServerFormProps) {
+export function ServerForm({ onSuccess }: ServerFormProps) {
+  const { toast } = useToast();
   const { createServer } = useServers();
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch
-  } = useForm<ServerFormData>({
-    resolver: zodResolver(serverSchema),
+  const form = useForm<ServerFormValues>({
+    resolver: zodResolver(serverFormSchema),
     defaultValues: {
       port: 22,
-      username: 'root',
       isBuildServer: false,
       isSwarmManager: false,
       isSwarmWorker: false,
-      supportedTypes: []
-    }
+    },
   });
 
-  const onSubmit = async (data: ServerFormData) => {
+  const onSubmit = async (data: ServerFormValues) => {
     try {
-      setIsSubmitting(true);
-      setError(null);
-      await createServer(data as CreateServerDto);
+      await createServer(data);
+      toast({
+        title: 'Success',
+        description: 'Server created successfully',
+      });
       onSuccess?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create server');
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create server',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="name">Name *</Label>
-          <Input
-            id="name"
-            {...register('name')}
-            placeholder="shiny-scarab-w4w00gk"
-          />
-          {errors.name && (
-            <p className="text-sm text-red-500">{errors.name.message}</p>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Server Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Production Server" {...field} />
+              </FormControl>
+              <FormDescription>
+                A friendly name to identify your server
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
+        />
 
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            {...register('description')}
-            placeholder="Optional server description"
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="host"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Host</FormLabel>
+                <FormControl>
+                  <Input placeholder="example.com" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Server hostname or IP address
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="port"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Port</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} />
+                </FormControl>
+                <FormDescription>
+                  SSH port (default: 22)
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
 
-        <div>
-          <Label htmlFor="host">IP Address/Domain *</Label>
-          <Input
-            id="host"
-            {...register('host')}
-            placeholder="192.168.1.100 or example.com"
-          />
-          {errors.host && (
-            <p className="text-sm text-red-500">{errors.host.message}</p>
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <FormControl>
+                <Input placeholder="root" {...field} />
+              </FormControl>
+              <FormDescription>
+                SSH username for server access
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
+        />
 
-        <div>
-          <Label htmlFor="port">Port *</Label>
-          <Input
-            id="port"
-            type="number"
-            {...register('port', { valueAsNumber: true })}
-          />
-          {errors.port && (
-            <p className="text-sm text-red-500">{errors.port.message}</p>
+        <FormField
+          control={form.control}
+          name="privateKey"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Private Key</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                SSH private key for authentication
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-
-        <div>
-          <Label htmlFor="username">User *</Label>
-          <Input
-            id="username"
-            {...register('username')}
-          />
-          <p className="text-sm text-gray-500">Non-root user is experimental: docs</p>
-          {errors.username && (
-            <p className="text-sm text-red-500">{errors.username.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="privateKey">Private Key</Label>
-          <Input
-            id="privateKey"
-            {...register('privateKey')}
-            placeholder="localhost's key"
-          />
-          {errors.privateKey && (
-            <p className="text-sm text-red-500">{errors.privateKey.message}</p>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="isBuildServer"
-            {...register('isBuildServer')}
-          />
-          <Label htmlFor="isBuildServer">Use it as a build server?</Label>
-        </div>
+        />
 
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Swarm (experimental)</h3>
-          <p className="text-sm text-gray-500">Read the docs <a href="#" className="text-blue-500">here</a></p>
+          <FormField
+            control={form.control}
+            name="isBuildServer"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Build Server</FormLabel>
+                  <FormDescription>
+                    This server will be used for building applications
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isSwarmManager"
-              {...register('isSwarmManager')}
-            />
-            <Label htmlFor="isSwarmManager">Is it a Swarm Manager?</Label>
-          </div>
+          <FormField
+            control={form.control}
+            name="isSwarmManager"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Swarm Manager</FormLabel>
+                  <FormDescription>
+                    This server will be a Docker Swarm manager node
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isSwarmWorker"
-              {...register('isSwarmWorker')}
-              disabled={watch('isSwarmManager')}
-            />
-            <Label htmlFor="isSwarmWorker">Is it a Swarm Worker?</Label>
-          </div>
+          <FormField
+            control={form.control}
+            name="isSwarmWorker"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Swarm Worker</FormLabel>
+                  <FormDescription>
+                    This server will be a Docker Swarm worker node
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
         </div>
-      </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex justify-end space-x-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Continue'}
-        </Button>
-      </div>
-    </form>
+        <div className="flex justify-end space-x-2">
+          <Button type="submit">
+            Create Server
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 } 
