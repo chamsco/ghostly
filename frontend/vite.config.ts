@@ -28,7 +28,7 @@ export default defineConfig({
         ws: true,
       },
       '/auth': {
-        target: 'http://localhost:3000',
+        target: 'http://168.119.111.140:3000',
         changeOrigin: true,
         secure: false,
       }
