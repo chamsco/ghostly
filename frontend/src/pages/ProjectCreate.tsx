@@ -23,7 +23,6 @@ import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useServers } from '@/hooks/use-servers';
 
 // Form validation schemas for each step
