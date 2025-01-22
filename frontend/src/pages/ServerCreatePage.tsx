@@ -13,15 +13,10 @@ export function ServerCreatePage() {
     }
   };
 
-  const handleSuccess = () => {
-    navigate('/servers');
-  };
-
   return (
     <ServerCreate
       open={isOpen}
       onOpenChange={handleOpenChange}
-      onSuccess={handleSuccess}
     />
   );
 } 

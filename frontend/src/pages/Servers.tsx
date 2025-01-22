@@ -108,7 +108,6 @@ export function Servers() {
       <ServerCreate 
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        onSuccess={handleServerCreated}
       />
     </div>
   );
