@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InfoCircledIcon } from '@radix-ui/react-icons';
+//import { Server, CreateServerDto } from '@/types/server';
+import { useNavigate } from 'react-router-dom';
 
 const serverFormSchema = z.object({
   name: z.string().min(3, 'Server name must be at least 3 characters'),
@@ -46,6 +48,7 @@ interface ServerCreateProps {
 export function ServerCreate({ open, onOpenChange, onSuccess }: ServerCreateProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const form = useForm<ServerFormValues>({
     resolver: zodResolver(serverFormSchema),
@@ -58,21 +61,40 @@ export function ServerCreate({ open, onOpenChange, onSuccess }: ServerCreateProp
     },
   });
 
-  const onSubmit = async (values: ServerFormValues) => {
+  const handleSubmit = async (values: ServerFormValues) => {
     try {
       setIsLoading(true);
-      await serversApi.create(values);
+      
+      // Create server first
+      const server = await serversApi.create(values);
+      if (!server) {
+        throw new Error('Failed to create server');
+      }
+
+      // Test connection
+      const connectionTest = await serversApi.checkConnection(server.id);
+      if (!connectionTest.status) {
+        // If connection fails, delete the server
+        await serversApi.delete(server.id);
+        toast({
+          variant: "destructive",
+          title: "Connection Failed",
+          description: "Could not establish connection to the server. Please check your credentials."
+        });
+        return;
+      }
+
       toast({
         title: "Success",
         description: "Server created successfully"
       });
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (err) {
+      navigate('/servers');
+    } catch (error) {
+      console.error('Server creation error:', error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to create server",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to create server"
       });
     } finally {
       setIsLoading(false);
@@ -86,7 +108,7 @@ export function ServerCreate({ open, onOpenChange, onSuccess }: ServerCreateProp
           <DialogTitle>New Server</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"

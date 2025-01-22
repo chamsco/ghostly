@@ -104,7 +104,11 @@ export default function ProjectCreate() {
         ...basicInfo,
         environments: environments.map(env => ({
           name: env.name,
-          variables: env.variables,
+          variables: env.variables.map(v => ({
+            key: v.key.trim(),
+            value: v.value.trim(),
+            isSecret: v.isSecret || isSecretKey(v.key)
+          })),
           resources: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -126,12 +130,27 @@ export default function ProjectCreate() {
         });
       }
     } catch (error) {
+      console.error('Project creation error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create project"
+        description: error instanceof Error ? error.message : "Failed to create project"
       });
     }
+  };
+
+  const isSecretKey = (key: string): boolean => {
+    const secretPatterns = [
+      /secret/i,
+      /password/i,
+      /key/i,
+      /token/i,
+      /auth/i,
+      /cert/i,
+      /private/i,
+      /credential/i
+    ];
+    return secretPatterns.some(pattern => pattern.test(key));
   };
 
   const handleEnvironmentVariablesChange = (index: number, variables: EnvironmentVariable[]) => {
@@ -144,22 +163,62 @@ export default function ProjectCreate() {
 
   const handleFileUpload = async (file: File, envIndex: number) => {
     try {
+      // Validate file type
+      if (!file.name.endsWith('.env')) {
+        toast({
+          variant: "destructive",
+          title: "Invalid File",
+          description: "Please upload a .env file"
+        });
+        return;
+      }
+
+      // Validate file size (max 1MB)
+      if (file.size > 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "File size should be less than 1MB"
+        });
+        return;
+      }
+
       const content = await file.text();
       const parsedEnv = parseEnvFile(content);
+
+      // Validate parsed variables
+      if (parsedEnv.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Empty File",
+          description: "No valid environment variables found in the file"
+        });
+        return;
+      }
+
+      // Update environment variables
       setEnvironments(prevEnvs => {
         const newEnvs = [...prevEnvs];
-        newEnvs[envIndex].variables = parsedEnv;
+        newEnvs[envIndex] = {
+          ...newEnvs[envIndex],
+          variables: parsedEnv.map(v => ({
+            ...v,
+            isSecret: v.isSecret || isSecretKey(v.key)
+          }))
+        };
         return newEnvs;
       });
+
       toast({
         title: "Success",
         description: `Successfully imported ${parsedEnv.length} variables from ${file.name}`
       });
     } catch (error) {
+      console.error('File upload error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to import environment variables"
+        description: "Failed to import environment variables. Please check the file format."
       });
     }
   };
@@ -216,7 +275,19 @@ export default function ProjectCreate() {
                       <h3 className="text-lg font-medium">Select Server</h3>
                       <div className="grid grid-cols-2 gap-4">
                         {isLoadingServers ? (
-                          <div>Loading servers...</div>
+                          <div className="col-span-2 text-center py-4">Loading servers...</div>
+                        ) : servers?.length === 0 ? (
+                          <div className="col-span-2 text-center py-4">
+                            <p className="text-muted-foreground">No servers available</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => navigate('/servers/create')}
+                            >
+                              Add Server
+                            </Button>
+                          </div>
                         ) : (
                           servers?.map((server) => (
                             <Button
@@ -229,21 +300,11 @@ export default function ProjectCreate() {
                               <div className="flex flex-col items-start">
                                 <span className="font-medium">{server.name}</span>
                                 <span className="text-sm text-muted-foreground">{server.host}</span>
+                                <span className="text-sm text-muted-foreground">{server.status}</span>
                               </div>
                             </Button>
                           ))
                         )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={() => navigate('/servers/create')}
-                        >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">Add Server</span>
-                            <span className="text-sm text-muted-foreground">Configure a new server</span>
-                          </div>
-                        </Button>
                       </div>
                     </div>
                   </div>

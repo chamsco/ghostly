@@ -8,7 +8,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import type { Project, Resource } from '@/types/project';
+import { Project, ProjectStatus } from '@/types/project';
+import type { Resource } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { ResourceList } from '@/features/resources/components/resource-list';
 import { ResourceCreate } from '@/features/resources/components/resource-create';
@@ -72,6 +73,44 @@ export function ProjectDetail() {
         description: err instanceof Error ? err.message : "Failed to update environment variables",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!project) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${project.name}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsLoading(true);
+
+      // Stop the project first if it's running
+      if (project.status === ProjectStatus.RUNNING) {
+        await projectsApi.stop(project.id);
+      }
+
+      // Delete the project
+      await projectsApi.delete(project.id);
+
+      toast({
+        title: "Success",
+        description: "Project deleted successfully"
+      });
+
+      navigate('/projects');
+    } catch (error) {
+      console.error('Project deletion error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete project"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
