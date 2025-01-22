@@ -199,11 +199,14 @@ export function Dashboard() {
     retryCount: 0
   });
 
-  const fetchWithRetry = async (
+  // Memoize the fetch functions to prevent recreating them on every render
+  const fetchWithRetry = useCallback(async (
     fetcher: () => Promise<any>,
     setter: React.Dispatch<React.SetStateAction<EndpointState>>,
     currentState: EndpointState
   ) => {
+    if (currentState.isLoading) return; // Prevent concurrent requests
+    
     try {
       const data = await fetcher();
       setter({
@@ -232,7 +235,7 @@ export function Dashboard() {
         }, backoffDelay);
       }
     }
-  };
+  }, []);
 
   const fetchDashboardStats = useCallback(() => {
     return fetchWithRetry(
@@ -243,7 +246,7 @@ export function Dashboard() {
       setDashboardStats,
       dashboardStats
     );
-  }, [dashboardStats]);
+  }, [fetchWithRetry, dashboardStats]);
 
   const fetchSystemMetrics = useCallback(() => {
     return fetchWithRetry(
@@ -253,7 +256,7 @@ export function Dashboard() {
       setSystemMetrics,
       systemMetrics
     );
-  }, [systemMetrics]);
+  }, [fetchWithRetry, systemMetrics]);
 
   const fetchHistoricalMetrics = useCallback(() => {
     return fetchWithRetry(
@@ -264,20 +267,30 @@ export function Dashboard() {
       setHistoricalMetrics,
       historicalMetrics
     );
-  }, [historicalMetrics]);
+  }, [fetchWithRetry, historicalMetrics]);
 
+  // Single useEffect for initial data fetch
   useEffect(() => {
-    fetchDashboardStats();
-    fetchSystemMetrics();
-    fetchHistoricalMetrics();
+    const fetchInitialData = async () => {
+      await Promise.all([
+        fetchDashboardStats(),
+        fetchSystemMetrics(),
+        fetchHistoricalMetrics()
+      ]);
+    };
+    fetchInitialData();
 
-    const interval = setInterval(() => {
-      if (!dashboardStats.error) fetchDashboardStats();
-      if (!systemMetrics.error) fetchSystemMetrics();
-      if (!historicalMetrics.error) fetchHistoricalMetrics();
-    }, 120000);
+    // Set up polling interval
+    const intervalId = setInterval(() => {
+      if (!document.hidden) { // Only fetch if tab is visible
+        fetchInitialData();
+      }
+    }, 120000); // 2 minute interval
 
-    return () => clearInterval(interval);
+    // Cleanup
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [fetchDashboardStats, fetchSystemMetrics, fetchHistoricalMetrics]);
 
   const stats: Stats = dashboardStats.data || {

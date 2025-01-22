@@ -26,15 +26,16 @@ import { useServers } from '@/hooks/use-servers';
 import type { Environment, EnvironmentVariable } from '@/types/environment';
 import { generateUUID } from '@/lib/utils';
 import type { CreateProjectDto, CreateEnvironmentDto } from '@/types/project';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Form validation schemas for each step
-const basicInfoSchema = z.object({
+// Form validation schema
+const projectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().min(1, 'Description is required'),
-  serverId: z.string().min(1, 'Server is required'),
+  defaultServerId: z.string().optional(),
 });
 
-type BasicInfoValues = z.infer<typeof basicInfoSchema>;
+type ProjectFormValues = z.infer<typeof projectSchema>;
 
 const parseEnvFile = (content: string): EnvironmentVariable[] => {
   const variables: EnvironmentVariable[] = [];
@@ -52,7 +53,7 @@ const parseEnvFile = (content: string): EnvironmentVariable[] => {
       id: generateUUID(),
       key: key.trim(),
       value: value.trim(),
-      isSecret: key.includes('SECRET') || key.includes('PASSWORD') || key.includes('KEY'),
+      isSecret: isSecretKey(key.trim()),
       createdAt: now,
       updatedAt: now
     });
@@ -61,11 +62,25 @@ const parseEnvFile = (content: string): EnvironmentVariable[] => {
   return variables;
 };
 
+const isSecretKey = (key: string): boolean => {
+  const secretPatterns = [
+    /secret/i,
+    /password/i,
+    /key/i,
+    /token/i,
+    /auth/i,
+    /cert/i,
+    /private/i,
+    /credential/i
+  ];
+  return secretPatterns.some(pattern => pattern.test(key));
+};
+
 export default function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<'basic' | 'environments'>('basic');
-  const [basicInfo, setBasicInfo] = useState<BasicInfoValues>();
+  const [globalVariables, setGlobalVariables] = useState<EnvironmentVariable[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([
     { 
       id: generateUUID(),
@@ -86,44 +101,25 @@ export default function ProjectCreate() {
   ]);
   const { servers, isLoading: isLoadingServers } = useServers();
 
-  const basicForm = useForm<BasicInfoValues>({
-    resolver: zodResolver(basicInfoSchema),
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectSchema),
     defaultValues: {
       name: '',
       description: '',
-      serverId: '',
+      defaultServerId: undefined,
     },
   });
 
-  const handleBasicSubmit = async (values: BasicInfoValues) => {
-    setBasicInfo(values);
-    setStep('environments');
-  };
-
-  const handleEnvironmentSubmit = async () => {
-    if (!basicInfo) return;
-
+  const handleSubmit = async (values: ProjectFormValues) => {
     try {
-      const now = new Date().toISOString();
-      
-      const processedEnvironments: CreateEnvironmentDto[] = environments.map(env => ({
-        name: env.name,
-        variables: env.variables.map((variable: EnvironmentVariable) => ({
-          id: generateUUID(),
-          key: variable.key.trim(),
-          value: variable.value.trim(),
-          isSecret: variable.isSecret || isSecretKey(variable.key),
-          createdAt: now,
-          updatedAt: now
-        })),
-        resources: []
-      }));
-
       const projectData: CreateProjectDto = {
-        name: basicInfo.name,
-        description: basicInfo.description,
-        serverId: basicInfo.serverId,
-        environments: processedEnvironments
+        ...values,
+        globalVariables,
+        environments: environments.map(env => ({
+          name: env.name,
+          variables: env.variables,
+          resources: []
+        }))
       };
 
       const project = await projectsApi.create(projectData);
@@ -145,29 +141,7 @@ export default function ProjectCreate() {
     }
   };
 
-  const isSecretKey = (key: string): boolean => {
-    const secretPatterns = [
-      /secret/i,
-      /password/i,
-      /key/i,
-      /token/i,
-      /auth/i,
-      /cert/i,
-      /private/i,
-      /credential/i
-    ];
-    return secretPatterns.some(pattern => pattern.test(key));
-  };
-
-  const handleEnvironmentVariablesChange = (index: number, variables: EnvironmentVariable[]) => {
-    setEnvironments(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], variables };
-      return updated;
-    });
-  };
-
-  const handleFileUpload = async (file: File, envIndex: number) => {
+  const handleFileUpload = async (file: File, isGlobal: boolean = false, envIndex?: number) => {
     try {
       // Validate file type
       if (!file.name.endsWith('.env')) {
@@ -202,18 +176,18 @@ export default function ProjectCreate() {
         return;
       }
 
-      // Update environment variables
-      setEnvironments(prevEnvs => {
-        const newEnvs = [...prevEnvs];
-        newEnvs[envIndex] = {
-          ...newEnvs[envIndex],
-          variables: parsedEnv.map(v => ({
-            ...v,
-            isSecret: v.isSecret || isSecretKey(v.key)
-          }))
-        };
-        return newEnvs;
-      });
+      if (isGlobal) {
+        setGlobalVariables(parsedEnv);
+      } else if (typeof envIndex === 'number') {
+        setEnvironments(prev => {
+          const updated = [...prev];
+          updated[envIndex] = {
+            ...updated[envIndex],
+            variables: parsedEnv
+          };
+          return updated;
+        });
+      }
 
       toast({
         title: "Success",
@@ -231,140 +205,136 @@ export default function ProjectCreate() {
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs value={step} onValueChange={(value) => setStep(value as 'basic' | 'environments')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="basic">Basic Information</TabsTrigger>
-          <TabsTrigger value="environments" disabled={!basicInfo}>Environments</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Create New Project</CardTitle>
+          <CardDescription>
+            Set up your project with basic information and environment variables.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <TabsContent value="basic">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create New Project</CardTitle>
-              <CardDescription>
-                Enter the basic information for your new project.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...basicForm}>
-                <form onSubmit={basicForm.handleSubmit(handleBasicSubmit)} className="space-y-4">
-                  <FormField
-                    control={basicForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={basicForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-medium">Select Server</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        {isLoadingServers ? (
-                          <div className="col-span-2 text-center py-4">Loading servers...</div>
-                        ) : servers?.length === 0 ? (
-                          <div className="col-span-2 text-center py-4">
-                            <p className="text-muted-foreground">No servers available</p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="mt-2"
-                              onClick={() => navigate('/servers/create')}
-                            >
-                              Add Server
-                            </Button>
-                          </div>
-                        ) : (
-                          servers?.map((server) => (
-                            <Button
-                              key={server.id}
-                              type="button"
-                              variant={basicForm.watch('serverId') === server.id ? 'default' : 'outline'}
-                              className="w-full justify-start"
-                              onClick={() => basicForm.setValue('serverId', server.id)}
-                            >
-                              <div className="flex flex-col items-start">
-                                <span className="font-medium">{server.name}</span>
-                                <span className="text-sm text-muted-foreground">{server.host}</span>
-                                <span className="text-sm text-muted-foreground">{server.status}</span>
-                              </div>
-                            </Button>
-                          ))
-                        )}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">Default Server (Optional)</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {isLoadingServers ? (
+                      <div className="col-span-2 text-center py-4">Loading servers...</div>
+                    ) : servers?.length === 0 ? (
+                      <div className="col-span-2 text-center py-4">
+                        <p className="text-muted-foreground">No servers available</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={() => navigate('/servers/create')}
+                        >
+                          Add Server
+                        </Button>
                       </div>
-                    </div>
+                    ) : (
+                      servers?.map((server) => (
+                        <Button
+                          key={server.id}
+                          type="button"
+                          variant={form.watch('defaultServerId') === server.id ? 'default' : 'outline'}
+                          className="w-full justify-start"
+                          onClick={() => form.setValue('defaultServerId', server.id)}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{server.name}</span>
+                            <span className="text-sm text-muted-foreground">{server.host}</span>
+                            <span className="text-sm text-muted-foreground">{server.status}</span>
+                          </div>
+                        </Button>
+                      ))
+                    )}
                   </div>
+                </div>
 
-                  <Button type="submit" className="w-full">Continue</Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Global Environment Variables</h3>
+                    <Input
+                      type="file"
+                      accept=".env"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, true);
+                      }}
+                    />
+                  </div>
+                  <EnvironmentVariablesEditor
+                    value={globalVariables}
+                    onChange={setGlobalVariables}
+                  />
+                </div>
 
-        <TabsContent value="environments">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configure Environments</CardTitle>
-              <CardDescription>
-                Set up environment variables for your project. You can upload .env files or add variables manually.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {environments.map((env, index) => (
-                  <div key={env.name} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium capitalize">{env.name} Environment</h3>
-                      <Input
-                        type="file"
-                        accept=".env"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileUpload(file, index);
+                <div className="space-y-6">
+                  {environments.map((env, index) => (
+                    <div key={env.name} className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium capitalize">{env.name} Environment Variables</h3>
+                        <Input
+                          type="file"
+                          accept=".env"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, false, index);
+                          }}
+                        />
+                      </div>
+                      <EnvironmentVariablesEditor
+                        value={env.variables}
+                        onChange={(variables) => {
+                          setEnvironments(prev => {
+                            const updated = [...prev];
+                            updated[index] = { ...updated[index], variables };
+                            return updated;
+                          });
                         }}
                       />
                     </div>
-                    <EnvironmentVariablesEditor
-                      value={env.variables}
-                      onChange={(variables) => handleEnvironmentVariablesChange(index, variables)}
-                    />
-                  </div>
-                ))}
-
-                <div className="flex justify-end space-x-4">
-                  <Button variant="outline" onClick={() => setStep('basic')}>
-                    Back
-                  </Button>
-                  <Button onClick={handleEnvironmentSubmit}>
-                    Create Project
-                  </Button>
+                  ))}
                 </div>
+
+                <Button type="submit" className="w-full">
+                  Create Project
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

@@ -91,8 +91,8 @@ export interface Project {
 export interface CreateProjectDto {
   name: string;
   description?: string;
-  type?: string;
-  serverId?: string;
+  defaultServerId?: string;
+  globalVariables: EnvironmentVariable[];
   environments: CreateEnvironmentDto[];
 }
 

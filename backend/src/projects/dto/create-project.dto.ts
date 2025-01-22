@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CreateEnvironmentDto } from './create-environment.dto';
 import { EnvironmentVariableDto } from './environment-variable.dto';
 
 export class CreateProjectDto {
@@ -12,11 +13,16 @@ export class CreateProjectDto {
   description: string;
 
   @IsString()
-  @IsNotEmpty()
-  serverId: string;
-
   @IsOptional()
+  defaultServerId?: string;
+
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EnvironmentVariableDto)
-  environmentVariables?: EnvironmentVariableDto[];
+  globalVariables: EnvironmentVariableDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEnvironmentDto)
+  environments: CreateEnvironmentDto[];
 } 
