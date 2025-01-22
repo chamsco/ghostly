@@ -164,7 +164,7 @@ export function ProjectCreate() {
                           <SelectItem value="loading" disabled>Loading servers...</SelectItem>
                         ) : servers?.map(server => (
                           <SelectItem key={server.id} value={server.id}>
-                            {server.name} ({server.type})
+                            {server.name} ({server.host})
                           </SelectItem>
                         ))}
                       </SelectContent>

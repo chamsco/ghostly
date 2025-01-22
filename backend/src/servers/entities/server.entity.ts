@@ -15,25 +15,32 @@ export class Server {
   @Column()
   name: string;
 
-  @Column({
-    type: 'enum',
-    enum: ['local', 'remote'],
-    default: 'local'
-  })
-  type: 'local' | 'remote';
-
-  @Column('simple-array')
-  supportedTypes: ProjectType[];
-
   @Column({ nullable: true })
-  host?: string;
+  description?: string;
 
-  @Column('json', { nullable: true })
-  sshConfig?: {
-    username: string;
-    privateKey: string;
-    port: number;
-  };
+  @Column()
+  host: string;
+
+  @Column({ default: 22 })
+  port: number;
+
+  @Column({ default: 'root' })
+  username: string;
+
+  @Column()
+  privateKey: string;
+
+  @Column({ default: false })
+  isBuildServer: boolean;
+
+  @Column({ default: false })
+  isSwarmManager: boolean;
+
+  @Column({ default: false })
+  isSwarmWorker: boolean;
+
+  @Column('simple-array', { default: [] })
+  supportedTypes: ProjectType[];
 
   @Column({
     type: 'enum',

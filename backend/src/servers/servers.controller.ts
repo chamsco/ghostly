@@ -24,6 +24,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ServersService } from './servers.service';
 import { Server } from './entities/server.entity';
+import { CreateServerDto } from './dto/create-server.dto';
 
 @Controller('servers')
 @UseGuards(JwtAuthGuard)
@@ -52,7 +53,7 @@ export class ServersController {
   }
 
   @Post()
-  async createServer(@Body() serverData: Partial<Server>): Promise<Server> {
+  async createServer(@Body() serverData: CreateServerDto): Promise<Server> {
     try {
       return await this.serversService.create(serverData);
     } catch (error) {
@@ -87,6 +88,19 @@ export class ServersController {
         throw error;
       }
       throw new InternalServerErrorException('Failed to delete server');
+    }
+  }
+
+  @Get(':id/check-connection')
+  async checkConnection(@Param('id') id: string): Promise<{ status: boolean }> {
+    try {
+      const status = await this.serversService.checkConnection(id);
+      return { status };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to check server connection');
     }
   }
 } 

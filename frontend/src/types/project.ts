@@ -4,6 +4,15 @@
  * Defines types and interfaces for projects and their resources in the application
  */
 
+export enum ProjectType {
+  NODEJS = 'nodejs',
+  PYTHON = 'python',
+  PHP = 'php',
+  DOCKER = 'docker',
+  DATABASE = 'database',
+  WEBSITE = 'website'
+}
+
 export enum ResourceType {
   DATABASE = 'database',
   SERVICE = 'service',
@@ -45,6 +54,9 @@ export interface Environment {
   id: string;
   name: string;
   variables: EnvironmentVariable[];
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Resource {
@@ -68,6 +80,7 @@ export interface Resource {
   dockerImageUrl?: string;
   // Website specific fields
   branch?: string;
+  projectId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +90,7 @@ export interface Project {
   name: string;
   description: string;
   serverId: string;
+  ownerId: string;
   status: ProjectStatus;
   environments: Environment[];
   resources: Resource[];

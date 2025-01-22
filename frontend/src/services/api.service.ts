@@ -13,7 +13,7 @@ import type { CreateUserDto, AuthResponse, TwoFactorResponse, BiometricRegistrat
 //import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto, Resource, Environment } from '@/types/project';
-import type { Server } from '@/types/server';
+import type { Server, CreateServerDto } from '@/types/server';
 
 // Get the base URL from environment or use default
 const BASE_URL = import.meta.env.VITE_API_URL || '';
@@ -263,6 +263,21 @@ export const serversApi = {
   },
   get: async (id: string): Promise<Server> => {
     const response = await api.get(`/servers/${id}`);
+    return response.data;
+  },
+  create: async (data: CreateServerDto): Promise<Server> => {
+    const response = await api.post('/servers', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<Server>): Promise<Server> => {
+    const response = await api.put(`/servers/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/servers/${id}`);
+  },
+  checkConnection: async (id: string): Promise<{ status: boolean }> => {
+    const response = await api.get(`/servers/${id}/check-connection`);
     return response.data;
   }
 };
