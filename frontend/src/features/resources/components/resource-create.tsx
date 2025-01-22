@@ -8,10 +8,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { ResourceType, DatabaseType, ServiceType } from '@/types/project';
+import { ResourceType, DatabaseType, ServiceType, type Resource } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { useNavigate } from 'react-router-dom';
+//import type { EnvironmentVariable } from '@/types/environment';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Resource name must be at least 3 characters'),
@@ -44,13 +44,14 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface Props {
   projectId: string;
+  environmentId: string;
+  onResourceCreated?: (resource: Resource) => void;
 }
 
-export function ResourceCreate({ projectId }: Props) {
+export function ResourceCreate({ projectId, environmentId, onResourceCreated }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,6 +70,7 @@ export function ResourceCreate({ projectId }: Props) {
       const resource = await projectsApi.createResource(projectId, {
         ...values,
         serverId: projectId,
+        environmentId,
         environmentVariables: values.environmentVariables
       });
       if (resource) {
@@ -76,7 +78,8 @@ export function ResourceCreate({ projectId }: Props) {
           title: "Success",
           description: "Resource created successfully"
         });
-        navigate(`/projects/${projectId}`);
+        onResourceCreated?.(resource);
+        setIsOpen(false);
       }
     } catch (error) {
       console.error('Resource creation error:', error);
@@ -248,10 +251,7 @@ export function ResourceCreate({ projectId }: Props) {
                           <SelectItem value={ServiceType.NODEJS}>Node.js</SelectItem>
                           <SelectItem value={ServiceType.PYTHON}>Python</SelectItem>
                           <SelectItem value={ServiceType.PHP}>PHP</SelectItem>
-                          <SelectItem value={ServiceType.CUSTOM_DOCKER}>Custom Docker</SelectItem>
-                          <SelectItem value={ServiceType.SUPABASE}>Supabase</SelectItem>
-                          <SelectItem value={ServiceType.POCKETBASE}>PocketBase</SelectItem>
-                          <SelectItem value={ServiceType.APPWRITE}>AppWrite</SelectItem>
+                          <SelectItem value={ServiceType.DOCKER}>Docker</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

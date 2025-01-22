@@ -1,4 +1,4 @@
-import { Environment } from '@/types/project';
+import { Environment, EnvironmentType } from '@/types/project';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { projectsApi } from '@/services/api.service';
@@ -33,7 +33,11 @@ export function EnvironmentList({ environments, onEnvironmentUpdated, onEnvironm
 
   const handleVariablesChange = async (environmentId: string, variables: Environment['variables']) => {
     try {
-      const environment = await projectsApi.updateEnvironment(environmentId, { variables });
+      const environment = await projectsApi.updateEnvironment(environmentId, {
+        name: environments.find(env => env.id === environmentId)?.name || '',
+        type: environments.find(env => env.id === environmentId)?.type || EnvironmentType.DEV,
+        variables
+      });
       if (environment) {
         onEnvironmentUpdated(environment);
         toast({

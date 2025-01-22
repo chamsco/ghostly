@@ -15,6 +15,10 @@ export class CreateResourceDto {
   @IsNotEmpty()
   serverId: string;
 
+  @IsString()
+  @IsNotEmpty()
+  environmentId: string;
+
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => EnvironmentVariableDto)

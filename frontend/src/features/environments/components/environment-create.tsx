@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Environment } from '@/types/project';
+import { Environment, EnvironmentType } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Environment name must be at least 3 characters'),
+  type: z.nativeEnum(EnvironmentType),
   variables: z.array(z.object({
     id: z.string(),
     key: z.string(),
@@ -39,32 +41,30 @@ export function EnvironmentCreate({ projectId, onEnvironmentCreated }: Props) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      type: EnvironmentType.DEV,
       variables: []
     }
   });
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
       const environment = await projectsApi.createEnvironment(projectId, {
         name: values.name,
-        variables: values.variables,
-        resources: []
+        type: values.type,
+        variables: values.variables || []
       });
-
+      
       if (environment) {
         onEnvironmentCreated(environment);
         setIsOpen(false);
-        toast({
-          title: "Success",
-          description: "Environment created successfully"
-        });
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Environment creation error:', error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to create environment",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to create environment"
       });
     } finally {
       setIsLoading(false);
@@ -97,6 +97,30 @@ export function EnvironmentCreate({ projectId, onEnvironmentCreated }: Props) {
                   <FormDescription>
                     A unique name for your environment
                   </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Environment Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select environment type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={EnvironmentType.DEV}>Development</SelectItem>
+                      <SelectItem value={EnvironmentType.PROD}>Production</SelectItem>
+                      <SelectItem value={EnvironmentType.STAGING}>Staging</SelectItem>
+                      <SelectItem value={EnvironmentType.TEST}>Test</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

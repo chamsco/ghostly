@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 import { Project } from './project.entity';
+import { Environment } from './environment.entity';
 import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../types/project.types';
 
 @Entity()
@@ -81,9 +82,15 @@ export class Resource {
   @Column()
   projectId: string;
 
+  @ManyToOne(() => Environment, environment => environment.resources)
+  environment: Environment;
+
+  @Column()
+  environmentId: string;
+
   @CreateDateColumn()
-  createdAt: string;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: string;
+  updatedAt: Date;
 } 

@@ -1,30 +1,56 @@
 /**
  * Project Details Page
  * 
- * Shows project information and allows managing resources and environments
+ * Shows project environments and their resources
+ * Allows managing environment variables and resources for each environment
  */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Project, ProjectStatus } from '@/types/project';
-import type { Resource } from '@/types/project';
 import { projectsApi } from '@/services/api.service';
-import { ResourceList } from '@/features/resources/components/resource-list';
-import { ResourceCreate } from '@/features/resources/components/resource-create';
-import { EnvironmentList } from '@/features/environments/components/environment-list';
-import { EnvironmentCreate } from '@/features/environments/components/environment-create';
 import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { Button } from '@/components/ui/button';
+import { ResourceCreate } from '@/features/resources/components/resource-create';
+import type { Project, Environment, Resource } from '@/types/project';
+import type { EnvironmentVariable } from '@/types/environment';
+import { Input } from '@/components/ui/input';
+import { generateUUID } from '@/lib/utils';
 
-export function ProjectDetail() {
+// Utility function for parsing .env files
+const parseEnvFile = (content: string): EnvironmentVariable[] => {
+  const variables: EnvironmentVariable[] = [];
+  
+  content.split('\n').forEach(line => {
+    // Skip comments and empty lines
+    if (line.trim().startsWith('#') || !line.trim()) return;
+    
+    const [key, ...valueParts] = line.split('=');
+    if (!key || !valueParts.length) return;
+    
+    const value = valueParts.join('=');
+    const now = new Date().toISOString();
+    variables.push({
+      id: generateUUID(),
+      key: key.trim(),
+      value: value.trim(),
+      isSecret: key.trim().toLowerCase().includes('secret') || key.trim().toLowerCase().includes('password'),
+      createdAt: now,
+      updatedAt: now
+    });
+  });
+  
+  return variables;
+};
+
+export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadedResources, setLoadedResources] = useState<Resource[]>([]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -34,6 +60,9 @@ export function ProjectDetail() {
         setIsLoading(true);
         const data = await projectsApi.findOne(id);
         setProject(data);
+        if (data.environments.length > 0) {
+          setSelectedEnvironment(data.environments[0]);
+        }
       } catch (error) {
         console.error('Failed to fetch project:', error);
         toast({
@@ -49,71 +78,131 @@ export function ProjectDetail() {
     fetchProject();
   }, [id, toast]);
 
-  useEffect(() => {
-    const loadResources = async () => {
-      if (!project) return;
-      const resources = await Promise.all(
-        project.resources.map(id => projectsApi.getResource(id))
-      );
-      setLoadedResources(resources.filter((r): r is Resource => r !== null));
-    };
-    loadResources();
-  }, [project]);
+  const handleEnvironmentSelect = (envId: string) => {
+    const env = project?.environments.find(e => e.id === envId);
+    if (env) {
+      setSelectedEnvironment(env);
+    }
+  };
 
-  const handleEnvironmentVariablesChange = async (environmentVariables: Project['environmentVariables']) => {
-    if (!project) return;
+  const handleVariablesChange = async (variables: EnvironmentVariable[]) => {
+    if (!project || !selectedEnvironment) return;
+
     try {
-      const updatedProject = await projectsApi.update(project.id, { environmentVariables });
-      setProject(updatedProject);
+      await projectsApi.updateEnvironment(project.id, {
+        name: selectedEnvironment.name,
+        type: selectedEnvironment.type,
+        variables
+      });
+      
+      // Update local state
+      setProject(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          environments: prev.environments.map(env => 
+            env.id === selectedEnvironment.id 
+              ? { ...env, variables }
+              : env
+          )
+        };
+      });
+
       toast({
         title: "Success",
-        description: "Environment variables updated successfully"
+        description: "Environment variables updated"
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Failed to update environment variables:', error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update environment variables",
-        variant: "destructive"
+        description: "Failed to update environment variables"
       });
     }
   };
 
-  const handleDelete = async () => {
-    if (!project) return;
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${project.name}? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
+  const handleFileUpload = async (file: File) => {
     try {
-      setIsLoading(true);
-
-      // Stop the project first if it's running
-      if (project.status === ProjectStatus.RUNNING) {
-        await projectsApi.stop(project.id);
+      // Validate file type
+      if (!file.name.endsWith('.env')) {
+        toast({
+          variant: "destructive",
+          title: "Invalid File",
+          description: "Please upload a .env file"
+        });
+        return;
       }
 
-      // Delete the project
-      await projectsApi.delete(project.id);
+      // Validate file size (max 1MB)
+      if (file.size > 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File Too Large",
+          description: "File size should be less than 1MB"
+        });
+        return;
+      }
+
+      const content = await file.text();
+      const parsedEnv = parseEnvFile(content);
+
+      // Validate parsed variables
+      if (parsedEnv.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Empty File",
+          description: "No valid environment variables found in the file"
+        });
+        return;
+      }
+
+      if (selectedEnvironment) {
+        // Merge with existing variables, overwriting duplicates
+        const existingVars = selectedEnvironment.variables || [];
+        const mergedVars = [...existingVars];
+        
+        parsedEnv.forEach((newVar: EnvironmentVariable) => {
+          const existingIndex = mergedVars.findIndex(v => v.key === newVar.key);
+          if (existingIndex >= 0) {
+            mergedVars[existingIndex] = newVar;
+          } else {
+            mergedVars.push(newVar);
+          }
+        });
+
+        await handleVariablesChange(mergedVars);
+      }
 
       toast({
         title: "Success",
-        description: "Project deleted successfully"
+        description: `Successfully imported ${parsedEnv.length} variables from ${file.name}`
       });
-
-      navigate('/projects');
     } catch (error) {
-      console.error('Project deletion error:', error);
+      console.error('File upload error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete project"
+        description: "Failed to import environment variables"
       });
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  const handleResourceCreated = (resource: Resource) => {
+    if (!project || !selectedEnvironment) return;
+
+    // Update local state
+    setProject(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        environments: prev.environments.map(env => 
+          env.id === selectedEnvironment.id 
+            ? { ...env, resources: [...env.resources, resource] }
+            : env
+        )
+      };
+    });
   };
 
   if (isLoading || !project) {
@@ -121,141 +210,103 @@ export function ProjectDetail() {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">{project.name}</h1>
+          <p className="text-muted-foreground">{project.description}</p>
+        </div>
+        <Button onClick={() => navigate(`/projects/${project.id}/settings`)}>
+          Settings
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>{project.name}</CardTitle>
-              <CardDescription>
-                {project.description}
-              </CardDescription>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isLoading}
-            >
-              Delete Project
-            </Button>
-          </div>
+          <CardTitle>Environments</CardTitle>
+          <CardDescription>
+            Manage your project's environments and their resources
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium">Created</h3>
-              <p className="text-sm text-muted-foreground">
-                {new Date(project.createdAt).toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium">Last Updated</h3>
-              <p className="text-sm text-muted-foreground">
-                {new Date(project.updatedAt).toLocaleString()}
-              </p>
-            </div>
-          </div>
+          <Tabs
+            value={selectedEnvironment?.id}
+            onValueChange={handleEnvironmentSelect}
+          >
+            <TabsList>
+              {project.environments.map(env => (
+                <TabsTrigger key={env.id} value={env.id}>
+                  {env.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {project.environments.map(env => (
+              <TabsContent key={env.id} value={env.id}>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">{env.name}</h3>
+                      <p className="text-sm text-muted-foreground">Type: {env.type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".env"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file);
+                        }}
+                      />
+                      <ResourceCreate
+                        projectId={project.id}
+                        environmentId={env.id}
+                        onResourceCreated={handleResourceCreated}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Environment Variables</h4>
+                    <EnvironmentVariablesEditor
+                      value={env.variables}
+                      onChange={handleVariablesChange}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Resources</h4>
+                    </div>
+                    {env.resources.length === 0 ? (
+                      <p className="text-muted-foreground">No resources yet</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {env.resources.map(resource => (
+                          <Card key={resource.id}>
+                            <CardHeader>
+                              <CardTitle>{resource.name}</CardTitle>
+                              <CardDescription>Type: {resource.type}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <div>
+                                  <h4 className="font-medium">{resource.name}</h4>
+                                  <p className="text-sm text-muted-foreground">Type: {resource.type}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
       </Card>
-
-      <Tabs defaultValue="resources">
-        <TabsList>
-          <TabsTrigger value="resources">Resources</TabsTrigger>
-          <TabsTrigger value="environments">Environments</TabsTrigger>
-          <TabsTrigger value="variables">Environment Variables</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="resources" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resources</CardTitle>
-              <CardDescription>
-                Manage the resources in your project
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResourceList
-                resources={loadedResources}
-                onResourceUpdated={(resource) => {
-                  setLoadedResources(prev => 
-                    prev.map(r => r.id === resource.id ? resource : r)
-                  );
-                }}
-                onResourceDeleted={(resourceId) => {
-                  setLoadedResources(prev => 
-                    prev.filter(r => r.id !== resourceId)
-                  );
-                  setProject(prev => prev ? {
-                    ...prev,
-                    resources: prev.resources.filter(id => id !== resourceId)
-                  } : null);
-                }}
-              />
-              <div className="mt-4">
-                <ResourceCreate projectId={project.id} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="environments" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Environments</CardTitle>
-              <CardDescription>
-                Manage deployment environments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EnvironmentList
-                environments={project.environments}
-                onEnvironmentUpdated={(environment) => {
-                  setProject({
-                    ...project,
-                    environments: project.environments.map(e =>
-                      e.id === environment.id ? environment : e
-                    )
-                  });
-                }}
-                onEnvironmentDeleted={(environmentId) => {
-                  setProject({
-                    ...project,
-                    environments: project.environments.filter(e => e.id !== environmentId)
-                  });
-                }}
-              />
-              <div className="mt-4">
-                <EnvironmentCreate
-                  projectId={project.id}
-                  onEnvironmentCreated={(environment) => {
-                    setProject({
-                      ...project,
-                      environments: [...project.environments, environment]
-                    });
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="variables" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Environment Variables</CardTitle>
-              <CardDescription>
-                Manage global environment variables for the project
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EnvironmentVariablesEditor
-                value={project.environmentVariables || []}
-                onChange={handleEnvironmentVariablesChange}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 } 

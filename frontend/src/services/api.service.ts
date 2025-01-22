@@ -328,13 +328,13 @@ export const projectsApi = {
     }
   },
 
-  updateEnvironment: async (environmentId: string, data: Partial<Environment>): Promise<Environment | null> => {
+  updateEnvironment: async (projectId: string, environment: CreateEnvironmentDto): Promise<Environment> => {
     try {
-      const response = await apiInstance.patch<Environment>(`/environments/${environmentId}`, data);
-      return response.data;
+      const { data } = await apiInstance.patch<Environment>(`/projects/${projectId}/environments`, environment);
+      return data;
     } catch (error) {
-      console.error('Failed to update environment:', error);
-      return null;
+      console.error('Environment update error:', error);
+      throw error;
     }
   },
 

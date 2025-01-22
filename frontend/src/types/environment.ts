@@ -1,3 +1,5 @@
+import { Resource, EnvironmentType } from './project';
+
 export interface EnvironmentVariable {
   id: string;
   key: string;
@@ -10,15 +12,16 @@ export interface EnvironmentVariable {
 export interface Environment {
   id: string;
   name: string;
+  type: EnvironmentType;
+  projectId: string;
+  resources: Resource[];
   variables: EnvironmentVariable[];
-  resources: string[];
-  projectId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateEnvironmentDto {
   name: string;
-  variables: EnvironmentVariable[];
-  resources?: string[];
+  type: EnvironmentType;
+  variables?: EnvironmentVariable[];
 } 

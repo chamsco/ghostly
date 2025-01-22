@@ -13,6 +13,13 @@ export enum ProjectType {
   WEBSITE = 'website'
 }
 
+export enum EnvironmentType {
+  DEV = 'dev',
+  PROD = 'prod',
+  STAGING = 'staging',
+  TEST = 'test'
+}
+
 export enum ResourceType {
   DATABASE = 'database',
   SERVICE = 'service',

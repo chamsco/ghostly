@@ -17,7 +17,7 @@ import ResetPassword from '@/pages/ResetPassword';
 import { Dashboard } from '@/pages/Dashboard';
 import { Projects } from '@/pages/Projects';
 import  ProjectCreate  from '@/pages/ProjectCreate';
-import { ProjectDetail } from '@/pages/ProjectDetail';
+import ProjectDetail from '@/pages/ProjectDetail';
 import { ProjectResources } from '@/pages/ProjectResources';
 import Settings from '@/pages/Settings';
 import ErrorBoundary from '@/components/ErrorBoundary';

@@ -5,9 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { projectsApi } from '@/services/api.service';
-import { Project } from '@/types/project';
+import { Project, Environment, Resource } from '@/types/project';
 //import { Resource } from '@/types/project';
-import { Environment } from '@/types/environment';
 import { ResourceCreate } from '@/features/resources/components/resource-create';
 
 export function ProjectResources() {
@@ -15,7 +14,7 @@ export function ProjectResources() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
-  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('production');
+  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,6 +25,10 @@ export function ProjectResources() {
         setIsLoading(true);
         const data = await projectsApi.findOne(projectId);
         setProject(data);
+        // Set initial selected environment
+        if (data.environments.length > 0) {
+          setSelectedEnvironment(data.environments[0]);
+        }
       } catch (error) {
         console.error('Failed to fetch project:', error);
         toast({
@@ -41,12 +44,16 @@ export function ProjectResources() {
     fetchProject();
   }, [projectId, toast]);
 
-  /*const handleResourceCreated = (environmentName: string) => {
+  const handleResourceCreated = (resource: Resource) => {
     toast({
       title: "Success",
-      description: `Resource added to ${environmentName} environment`
+      description: `Resource ${resource.name} added successfully`
     });
-  };*/
+    // Refresh project data
+    if (projectId) {
+      projectsApi.findOne(projectId).then(setProject);
+    }
+  };
 
   const handleDeleteResource = (resourceId: string) => {
     // Implement the delete logic here
@@ -82,23 +89,35 @@ export function ProjectResources() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={selectedEnvironment} onValueChange={setSelectedEnvironment}>
+          <Tabs 
+            value={selectedEnvironment?.name} 
+            onValueChange={(value) => {
+              const env = project.environments.find(e => e.name === value);
+              if (env) setSelectedEnvironment(env);
+            }}
+          >
             <TabsList>
-              {project.environments.map((env: Environment) => (
+              {project.environments.map((env) => (
                 <TabsTrigger key={env.name} value={env.name}>
                   {env.name}
                 </TabsTrigger>
               ))}
             </TabsList>
 
-            {project.environments.map((env: Environment) => (
+            {project.environments.map((env) => (
               <TabsContent key={env.name} value={env.name} className="space-y-4">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium capitalize">{env.name} Resources</h3>
-                    {projectId && <ResourceCreate projectId={projectId} />}
+                    {projectId && selectedEnvironment && (
+                      <ResourceCreate 
+                        projectId={projectId} 
+                        environmentId={selectedEnvironment.id}
+                        onResourceCreated={handleResourceCreated} 
+                      />
+                    )}
                   </div>
-                  {env.resources?.map((resource: any) => (
+                  {env.resources?.map((resource) => (
                     <Card key={resource.id}>
                       <CardContent className="py-4">
                         <div className="flex justify-between items-center">

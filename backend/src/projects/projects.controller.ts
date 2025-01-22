@@ -12,12 +12,7 @@ import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { EnvTemplateRequestDto, EnvTemplateResponseDto } from './dto/env-template.dto';
 import { EnvTemplateService } from './services/env-template.service';
 import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: {
-    id: string;
-  };
-}
+import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
@@ -56,15 +51,13 @@ export class ProjectsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async createProject(
-    @Body() projectData: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @Req() req: RequestWithUser
   ): Promise<Project> {
     try {
-      return await this.projectsService.create({
-        ...projectData,
-        ownerId: req.user.id
-      });
+      return await this.projectsService.createProject(createProjectDto, req.user.id);
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;

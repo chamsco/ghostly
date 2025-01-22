@@ -1,5 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Project } from './project.entity';
+import { Resource } from './resource.entity';
+import { EnvironmentVariable } from './environment-variable.entity';
+import { EnvironmentType } from '../types/project.types';
 
 @Entity()
 export class Environment {
@@ -9,20 +12,25 @@ export class Environment {
   @Column()
   name: string;
 
-  @Column('jsonb')
-  variables: { key: string; value: string; isSecret: boolean; }[];
-
-  @ManyToOne(() => Project, project => project.environments, {
-    onDelete: 'CASCADE'
+  @Column({
+    type: 'enum',
+    enum: EnvironmentType,
+    default: EnvironmentType.DEV
   })
+  type: EnvironmentType;
+
+  @ManyToOne(() => Project, project => project.environments)
   project: Project;
 
-  @Column()
-  projectId: string;
+  @OneToMany(() => Resource, resource => resource.environment)
+  resources: Resource[];
+
+  @OneToMany(() => EnvironmentVariable, variable => variable.environment)
+  variables: EnvironmentVariable[];
 
   @CreateDateColumn()
-  createdAt: string;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: string;
+  updatedAt: Date;
 } 

@@ -6,7 +6,10 @@ import { Resource } from './entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { CreateResourceDto } from './dto/create-resource.dto';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
-import { ProjectStatus } from './types/project.types';
+import { ProjectStatus, EnvironmentType } from './types/project.types';
+import { EnvironmentVariable } from './entities/environment-variable.entity';
+import { DataSource } from 'typeorm';
+import { CreateProjectDto } from './dto/create-project.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -16,7 +19,10 @@ export class ProjectsService {
     @InjectRepository(Resource)
     private resourcesRepository: Repository<Resource>,
     @InjectRepository(Environment)
-    private environmentsRepository: Repository<Environment>
+    private environmentsRepository: Repository<Environment>,
+    @InjectRepository(EnvironmentVariable)
+    private environmentVariablesRepository: Repository<EnvironmentVariable>,
+    private dataSource: DataSource
   ) {}
 
   // Project methods
@@ -35,23 +41,83 @@ export class ProjectsService {
     });
   }
 
-  async create(projectData: {
-    name: string;
-    description?: string;
-    status?: ProjectStatus;
-    ownerId: string;
-  }): Promise<Project> {
+  async createProject(createProjectDto: CreateProjectDto, userId: string): Promise<Project> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const project = this.projectsRepository.create({
-        ...projectData,
-        status: projectData.status || ProjectStatus.CREATED,
-        resources: [],
-        environments: []
+        ...createProjectDto,
+        ownerId: userId,
+        status: ProjectStatus.CREATED
       });
 
-      return await this.projectsRepository.save(project);
+      await queryRunner.manager.save(project);
+
+      // Create default environments
+      const environments = [
+        {
+          name: 'development',
+          type: EnvironmentType.DEV,
+          variables: [
+            {
+              key: 'NODE_ENV',
+              value: 'development',
+              isSecret: false
+            },
+            {
+              key: 'PORT',
+              value: '3000',
+              isSecret: false
+            }
+          ]
+        },
+        {
+          name: 'production',
+          type: EnvironmentType.PROD,
+          variables: [
+            {
+              key: 'NODE_ENV',
+              value: 'production',
+              isSecret: false
+            },
+            {
+              key: 'PORT',
+              value: '3000',
+              isSecret: false
+            }
+          ]
+        }
+      ];
+
+      for (const envData of environments) {
+        const environment = this.environmentsRepository.create({
+          ...envData,
+          project
+        });
+
+        await queryRunner.manager.save(environment);
+
+        // Create environment variables
+        for (const varData of envData.variables) {
+          const envVar = this.environmentVariablesRepository.create({
+            ...varData,
+            environment
+          });
+
+          await queryRunner.manager.save(envVar);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      return this.findOne(project.id);
     } catch (error) {
-      throw new InternalServerErrorException('Failed to create project');
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
   }
 

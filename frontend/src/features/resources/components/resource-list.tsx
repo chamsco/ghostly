@@ -46,23 +46,29 @@ export function ResourceList({ resources, onResourceUpdated, onResourceDeleted }
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-lg">{resource.name}</CardTitle>
+                <CardTitle className="text-lg">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">{resource.name}</h4>
+                    <Badge>{resource.type}</Badge>
+                  </div>
+                </CardTitle>
                 <CardDescription>
                   {resource.type}
                   {resource.databaseType && ` - ${resource.databaseType}`}
                   {resource.serviceType && ` - ${resource.serviceType}`}
                 </CardDescription>
               </div>
-              <Badge>{resource.status}</Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {resource.error && (
-                <div className="text-sm text-red-500">
-                  Error: {resource.error}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium">{resource.name}</h4>
+                <Badge>{resource.type}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Type: {resource.type}
+              </p>
               <div className="flex justify-end space-x-2">
                 <Button
                   variant="outline"
