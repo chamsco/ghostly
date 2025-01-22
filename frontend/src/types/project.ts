@@ -87,17 +87,24 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface EnvironmentVariableDto {
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
 export interface CreateProjectDto {
   name: string;
   description: string;
   defaultServerId?: string;
-  globalVariables?: EnvironmentVariable[];
+  globalVariables: EnvironmentVariableDto[];
+  environments: CreateEnvironmentDto[];
 }
 
 export interface CreateEnvironmentDto {
   name: string;
   type: EnvironmentType;
-  variables?: EnvironmentVariable[];
+  variables?: EnvironmentVariableDto[];
 }
 
 export interface CreateResourceDto {

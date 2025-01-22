@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { projectsApi } from '@/services/api.service';
 import { useServers } from '@/hooks/use-servers';
-//import type { CreateProjectDto } from '@/types/project';
+import { EnvironmentType } from '@/types/project';
 import { AxiosError } from 'axios';
 
 // Form validation schema
@@ -24,6 +24,20 @@ const projectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().min(1, 'Description is required'),
   defaultServerId: z.string().optional(),
+  globalVariables: z.array(z.object({
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean()
+  })).default([]),
+  environments: z.array(z.object({
+    name: z.string(),
+    type: z.nativeEnum(EnvironmentType),
+    variables: z.array(z.object({
+      key: z.string(),
+      value: z.string(),
+      isSecret: z.boolean()
+    })).default([])
+  })).default([])
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -39,13 +53,29 @@ export default function ProjectCreate() {
       name: '',
       description: '',
       defaultServerId: undefined,
+      globalVariables: [],
+      environments: []
     },
   });
 
   const handleSubmit = async (values: ProjectFormValues) => {
     try {
       console.log('Submitting project data:', values);
-      const project = await projectsApi.create(values);
+      const project = await projectsApi.create({
+        ...values,
+        environments: [
+          {
+            name: 'development',
+            type: EnvironmentType.DEV,
+            variables: []
+          },
+          {
+            name: 'production', 
+            type: EnvironmentType.PROD,
+            variables: []
+          }
+        ]
+      });
 
       if (project) {
         toast({
