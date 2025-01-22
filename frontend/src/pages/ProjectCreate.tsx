@@ -85,7 +85,6 @@ export default function ProjectCreate() {
     }
   ]);
   const { servers, isLoading: isLoadingServers } = useServers();
-  const [isLoading, setIsLoading] = useState(false);
 
   const basicForm = useForm<BasicInfoValues>({
     resolver: zodResolver(basicInfoSchema),
@@ -105,7 +104,6 @@ export default function ProjectCreate() {
     if (!basicInfo) return;
 
     try {
-      setIsLoading(true);
       const now = new Date().toISOString();
       
       const processedEnvironments: CreateEnvironmentDto[] = environments.map(env => ({
@@ -144,8 +142,6 @@ export default function ProjectCreate() {
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create project"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
