@@ -65,7 +65,11 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true);
-      await login(data.username, data.password, data.rememberMe);
+      await login({
+        username: data.username,
+        password: data.password,
+        rememberMe: data.rememberMe
+      });
       
       const from = (location.state as any)?.from?.pathname || '/dashboard';
       navigate(from);

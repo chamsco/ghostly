@@ -50,13 +50,14 @@ export interface CreateUserDto {
 }
 
 export interface LoginDto {
-  email: string;
+  username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface RegisterDto {
+  fullName: string;
+  username: string;
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
 } 
