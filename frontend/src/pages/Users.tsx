@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+//import { useState } from 'react';
+import {  useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, User as UserIcon, Shield, MoreVertical } from 'lucide-react';
@@ -9,12 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User } from '@/types/user';
+//import { User } from '@/types/user';
 import { useAuth } from '@/contexts/auth.context';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { UserStatus } from '@/types/user';
+//import { UserStatus } from '@/types/user';
+import { useUsers } from '@/hooks/use-users';
 
 // Create a users API instance
 const usersApi = axios.create({
@@ -52,11 +54,10 @@ usersApi.interceptors.response.use(
 );
 
 export function Users() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { users, isLoading, updateUserStatus, deleteUser } = useUsers();
 
   useEffect(() => {
     // Redirect non-admin users
@@ -68,27 +69,6 @@ export function Users() {
       });
       navigate('/dashboard');
       return;
-    }
-
-    const fetchUsers = async () => {
-      try {
-        setIsLoading(true);
-        const response = await usersApi.get<User[]>('/users');
-        setUsers(response.data);
-      } catch (err) {
-        console.error('Failed to fetch users:', err);
-        toast({
-          title: "Error",
-          description: "Failed to fetch users. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (user?.isAdmin) {
-      fetchUsers();
     }
   }, [user, navigate, toast]);
 
@@ -106,14 +86,8 @@ export function Users() {
   const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
     try {
       const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      await usersApi.patch(`/users/${userId}/status`, { status: newStatus });
+      await updateUserStatus({ userId, status: newStatus });
       
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, status: newStatus === 'active' ? UserStatus.ACTIVE : UserStatus.INACTIVE } : user
-        )
-      );
-
       toast({
         title: "Success",
         description: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`,
@@ -130,8 +104,7 @@ export function Users() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      await usersApi.delete(`/users/${userId}`);
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      await deleteUser(userId);
       
       toast({
         title: "Success",
