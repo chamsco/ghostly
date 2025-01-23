@@ -5,10 +5,17 @@ import { serversApi } from '../services/servers-api';
 export function useServers() {
   const queryClient = useQueryClient();
 
-  const { data: servers = [], isLoading, error, refetch } = useQuery<Server[]>({
+  const { data, isLoading, error, refetch } = useQuery<Server[]>({
     queryKey: ['servers'],
-    queryFn: () => serversApi.getServers(),
+    queryFn: async () => {
+      const response = await serversApi.getServers();
+      // Ensure we always return an array
+      return Array.isArray(response) ? response : [];
+    },
   });
+
+  // Ensure servers is always an array
+  const servers = Array.isArray(data) ? data : [];
 
   const createServerMutation = useMutation({
     mutationFn: (data: CreateServerDto) => serversApi.createServer(data),
