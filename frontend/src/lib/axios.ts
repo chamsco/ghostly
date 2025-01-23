@@ -26,129 +26,63 @@ import { toast } from 'sonner';
 
 // Create axios instances with different base URLs
 export const apiInstance = axios.create({
-  baseURL: 'http://168.119.111.140:3000',
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+  },
 });
 
 export const authApiInstance = axios.create({
-  baseURL: 'http://168.119.111.140:3000/auth',
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
-  }
+  },
 });
 
-// Add request interceptor for debugging
+// Add request interceptor to include auth token
 apiInstance.interceptors.request.use(
   (config) => {
-    console.log('🚀 Outgoing Request:', {
-      url: config.url,
-      method: config.method,
-      baseURL: config.baseURL,
-      headers: config.headers,
-      data: config.data,
-      withCredentials: config.withCredentials
-    });
-    return config;
-  },
-  (error) => {
-    console.error('❌ Request Error:', {
-      message: error.message,
-      config: error.config,
-      stack: error.stack
-    });
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor for debugging
-apiInstance.interceptors.response.use(
-  (response) => {
-    console.log('✅ Response Success:', {
-      url: response.config.url,
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      data: response.data
-    });
-    return response;
-  },
-  (error) => {
-    console.error('❌ Response Error:', {
-      message: error.message,
-      url: error.config?.url,
-      method: error.config?.method,
-      baseURL: error.config?.baseURL,
-      headers: error.config?.headers,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      responseHeaders: error.response?.headers,
-      responseData: error.response?.data,
-      stack: error.stack
-    });
-    return Promise.reject(error);
-  }
-);
-
-// Add the same detailed logging to authApiInstance
-authApiInstance.interceptors.request.use(
-  (config) => {
-    console.log('🔐 Auth Request:', {
-      url: config.url,
-      method: config.method,
-      baseURL: config.baseURL,
-      headers: config.headers,
-      data: config.data,
-      withCredentials: config.withCredentials
-    });
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Added auth token to request');
     }
     return config;
   },
   (error) => {
-    console.error('❌ Auth Request Error:', {
-      message: error.message,
-      config: error.config,
-      stack: error.stack
-    });
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+apiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('accessToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Add the same interceptors to authApiInstance
+authApiInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
   }
 );
 
 authApiInstance.interceptors.response.use(
-  (response) => {
-    console.log('✅ Auth Response Success:', {
-      url: response.config.url,
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      data: response.data
-    });
-    return response;
-  },
+  (response) => response,
   (error) => {
-    console.error('❌ Auth Response Error:', {
-      message: error.message,
-      url: error.config?.url,
-      method: error.config?.method,
-      baseURL: error.config?.baseURL,
-      headers: error.config?.headers,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      responseHeaders: error.response?.headers,
-      responseData: error.response?.data,
-      stack: error.stack
-    });
     if (error.response?.status === 401) {
-      console.log('🔒 Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
     }
