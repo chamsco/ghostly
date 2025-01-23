@@ -5,14 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { projectsApi } from "@/services/api.service";
-import { ServiceType } from "@/types/project";
+import { ServiceType, Resource } from "@/types/project";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { EnvironmentVariablesEditor } from "@/components/environment-variables-editor";
 import { EnvironmentVariable } from "@/types/environment";
-import { generateUUID } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -32,12 +31,22 @@ type FormValues = z.infer<typeof formSchema>;
 interface Props {
   projectId: string;
   environmentId: string;
+  serverId?: string;
+  onResourceCreated?: (resource: Resource) => void;
   variant?: "default" | "outline" | "secondary";
   className?: string;
   children?: React.ReactNode;
 }
 
-export function ResourceCreate({ projectId, environmentId, variant = "default", className, children }: Props) {
+export function ResourceCreate({ 
+  projectId, 
+  environmentId, 
+  serverId,
+  onResourceCreated,
+  variant = "default", 
+  className, 
+  children 
+}: Props) {
   const { toast } = useToast();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -54,7 +63,7 @@ export function ResourceCreate({ projectId, environmentId, variant = "default", 
         name: data.name,
         type: data.type,
         environmentId,
-        serverId: projectId,
+        serverId: serverId || projectId,
         environmentVariables: data.environmentVariables.map(({ key, value, isSecret }) => ({
           key,
           value,
@@ -62,7 +71,8 @@ export function ResourceCreate({ projectId, environmentId, variant = "default", 
         }))
       };
 
-      await projectsApi.createResource(projectId, resourceData);
+      const resource = await projectsApi.createResource(projectId, resourceData);
+      onResourceCreated?.(resource);
       toast({
         title: "Success",
         description: "Resource created successfully"
@@ -76,20 +86,6 @@ export function ResourceCreate({ projectId, environmentId, variant = "default", 
         variant: "destructive"
       });
     }
-  };
-
-  const handleAddVariable = () => {
-    const now = new Date().toISOString();
-    const newVariable: EnvironmentVariable = {
-      id: generateUUID(),
-      key: "",
-      value: "",
-      isSecret: false,
-      createdAt: now,
-      updatedAt: now
-    };
-    const currentVars = form.getValues("environmentVariables");
-    form.setValue("environmentVariables", [...currentVars, newVariable]);
   };
 
   return (
