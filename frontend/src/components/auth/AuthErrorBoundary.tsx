@@ -28,7 +28,8 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 //import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
-import axios from 'axios';
+import { isAxiosError } from 'axios';
+import { apiInstance, authApiInstance } from '@/lib/axios';
 
 interface Props {
   children: ReactNode;
@@ -88,7 +89,7 @@ export default class AuthErrorBoundary extends Component<Props, State> {
     console.error('Component Stack:', errorInfo.componentStack);
     
     // Log additional axios error details if available
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       console.error('API Error Details:', {
         status: error.response?.status,
         data: error.response?.data,
@@ -140,7 +141,7 @@ export default class AuthErrorBoundary extends Component<Props, State> {
   }
 
   private getErrorType(error: Error): AuthErrorType {
-    if (axios.isAxiosError(error)) {
+    if (isAxiosError(error)) {
       if (error.response?.status === 401) return AUTH_ERROR_TYPES.INVALID_TOKEN;
       if (error.response?.status === 403) return AUTH_ERROR_TYPES.SESSION_EXPIRED;
       if (!error.response) return AUTH_ERROR_TYPES.NETWORK_ERROR;
@@ -156,7 +157,7 @@ export default class AuthErrorBoundary extends Component<Props, State> {
     const errorType = this.getErrorType(error);
     
     // Get specific error message from API if available
-    if (axios.isAxiosError(error) && error.response?.data?.message) {
+    if (isAxiosError(error) && error.response?.data?.message) {
       return error.response.data.message;
     }
 

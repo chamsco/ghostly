@@ -10,26 +10,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  console.log('Configuring CORS...');
-  // Configure CORS with detailed logging
+  console.log('Configuring CORS with relaxed settings for debugging');
   app.enableCors({
-    origin: (origin, callback) => {
-      console.log('Incoming request from origin:', origin);
-      const allowedOrigins = ['http://168.119.111.140:3001'];
-      if (!origin || allowedOrigins.includes(origin)) {
-        console.log('Origin allowed:', origin);
-        callback(null, true);
-      } else {
-        console.log('Origin rejected:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 3600
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range']
   });
+  console.log('CORS configuration applied:', app.getHttpAdapter().getInstance()._cors);
 
   // Add detailed request logging middleware
   app.use((req, res, next) => {

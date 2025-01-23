@@ -7,11 +7,7 @@
  * - Error handling
  * - Response transformation
  */
-import { AxiosError } from 'axios';
-//import type { AxiosInstance } from 'axios';
 import type { AuthResponse, TwoFactorResponse, BiometricRegistrationOptions } from '@/types/auth';
-//import type { CreateUserDto} from '@/types/auth';
-//import type { LoginData } from '@/types/auth';
 import type { User } from '@/types/user';
 import type { Project, CreateProjectDto, Resource, CreateResourceDto } from '@/types/project';
 import type { Environment, CreateEnvironmentDto } from '@/types/environment';
@@ -24,7 +20,7 @@ import type { RegisterDto, LoginDto } from '@/types/auth';
 //const API_TIMEOUT = 10000; // 10 seconds
 
 // Add request logging and auth token
-const addRequestInterceptor = (axiosInstance: typeof apiInstance) => {
+/*const addRequestInterceptor = (axiosInstance: typeof apiInstance) => {
   axiosInstance.interceptors.request.use(
     (config) => {
       console.log('🚀 Outgoing Request:', {
@@ -87,10 +83,12 @@ const addResponseInterceptor = (axiosInstance: typeof apiInstance) => {
 };
 
 // Add interceptors to both instances
-addRequestInterceptor(apiInstance);
-addRequestInterceptor(authApiInstance);
-addResponseInterceptor(apiInstance);
+//addRequestInterceptor(apiInstance);
+//addRequestInterceptor(authApiInstance);
+//addResponseInterceptor(apiInstance);
 addResponseInterceptor(authApiInstance);
+*/
+
 
 export const authApi = {
   register: async (data: RegisterDto): Promise<AuthResponse> => {

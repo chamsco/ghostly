@@ -14,44 +14,8 @@ import {
 import { useAuth } from '@/contexts/auth.context';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 //import { UserStatus } from '@/types/user';
 import { useUsers } from '@/hooks/use-users';
-
-// Create a users API instance
-const usersApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Add request interceptor for auth token
-usersApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor for error handling
-usersApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 export function Users() {
   const { user } = useAuth();

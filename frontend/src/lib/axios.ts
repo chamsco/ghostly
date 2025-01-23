@@ -21,26 +21,29 @@ import type { User } from '@/types/user';
 import type { Project, CreateProjectDto } from '@/types/project';
 import { toast } from 'sonner';
 
-// Get base URL from environment variable
-//const BASE_URL = import.meta.env.VITE_API_URL || '';
+// Get base URL from environment variable with fallback
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000';
+console.log('🌐 Initializing API with base URL:', BASE_URL);
 
 // Create axios instances with different base URLs
 export const apiInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000',
+  baseURL: BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  }
+  },
+  timeout: 10000 // 10 second timeout
 });
 
 export const authApiInstance = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || 'http://168.119.111.140:3000') + '/auth',
+  baseURL: `${BASE_URL}/auth`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  }
+  },
+  timeout: 10000 // 10 second timeout
 });
 
 // Add request interceptor for debugging
@@ -58,6 +61,7 @@ apiInstance.interceptors.request.use(
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Added auth token to request');
     }
     return config;
   },
@@ -96,7 +100,10 @@ apiInstance.interceptors.response.use(
       responseData: error.response?.data,
       stack: error.stack
     });
-    if (error.response?.status === 401) {
+
+    // Only redirect to login if not already on an auth route
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/auth')) {
+      console.log('🔒 Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
     }
@@ -104,7 +111,7 @@ apiInstance.interceptors.response.use(
   }
 );
 
-// Add the same detailed logging to authApiInstance
+// Add the same interceptors to authApiInstance
 authApiInstance.interceptors.request.use(
   (config) => {
     console.log('🔐 Auth Request:', {
@@ -156,7 +163,9 @@ authApiInstance.interceptors.response.use(
       responseData: error.response?.data,
       stack: error.stack
     });
-    if (error.response?.status === 401) {
+
+    // Only redirect to login if not already on an auth route
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/auth')) {
       console.log('🔒 Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
@@ -164,6 +173,13 @@ authApiInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Log instance creation for debugging
+console.log('📡 API Instances Created:', {
+  apiBaseURL: apiInstance.defaults.baseURL,
+  authBaseURL: authApiInstance.defaults.baseURL,
+  headers: apiInstance.defaults.headers
+});
 
 export const handleAxiosError = (error: unknown) => {
   if (axios.isAxiosError(error)) {

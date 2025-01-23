@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('accessToken'));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   //const isPublicRoute = useMemo(() => {
   //  return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
@@ -64,43 +65,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check auth status on mount
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('🔄 Initializing auth state...');
       if (accessToken) {
         try {
           setLoading(true);
           const userData = await authApi.me();
+          console.log('✅ User data fetched:', userData);
           setUser(userData);
           setIsAuthenticated(true);
         } catch (error) {
-          console.error('Failed to get user data:', error);
+          console.error('❌ Failed to get user data:', error);
           setUser(null);
           setIsAuthenticated(false);
           localStorage.removeItem('accessToken');
           setAccessToken(null);
         } finally {
           setLoading(false);
+          setIsInitialized(true);
         }
       } else {
+        console.log('ℹ️ No access token found');
         setIsAuthenticated(false);
         setLoading(false);
+        setIsInitialized(true);
       }
     };
 
-    initializeAuth();
-  }, [accessToken]);
+    if (!isInitialized) {
+      initializeAuth();
+    }
+  }, [accessToken, isInitialized]);
 
   const login = async (data: LoginDto): Promise<void> => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('🔑 Attempting login...');
       const response = await authApi.login(data);
       if (response.access_token) {
         localStorage.setItem('accessToken', response.access_token);
         setAccessToken(response.access_token);
         setUser(response.user);
         setIsAuthenticated(true);
+        console.log('✅ Login successful');
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('❌ Login failed:', error);
       setIsAuthenticated(false);
+      setError(error instanceof Error ? error.message : 'Login failed');
       throw error;
     } finally {
       setLoading(false);
@@ -110,31 +122,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('🔒 Logging out...');
       await authApi.logout();
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
+      setError(error instanceof Error ? error.message : 'Logout failed');
     } finally {
       setUser(null);
       setAccessToken(null);
       setIsAuthenticated(false);
       localStorage.removeItem('accessToken');
       setLoading(false);
+      console.log('✅ Logout complete');
     }
   };
 
   const register = async (data: RegisterDto): Promise<void> => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('📝 Attempting registration...');
       const response = await authApi.register(data);
       if (response.access_token) {
         localStorage.setItem('accessToken', response.access_token);
         setAccessToken(response.access_token);
         setUser(response.user);
         setIsAuthenticated(true);
+        console.log('✅ Registration successful');
       }
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('❌ Registration failed:', error);
       setIsAuthenticated(false);
+      setError(error instanceof Error ? error.message : 'Registration failed');
       throw error;
     } finally {
       setLoading(false);
