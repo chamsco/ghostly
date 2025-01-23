@@ -35,7 +35,7 @@ export const apiInstance = axios.create({
 });
 
 export const authApiInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
+  baseURL: (import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001') + '/auth',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
