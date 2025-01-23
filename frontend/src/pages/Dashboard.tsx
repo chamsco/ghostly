@@ -199,99 +199,61 @@ export function Dashboard() {
     retryCount: 0
   });
 
-  // Memoize the fetch functions to prevent recreating them on every render
-  const fetchWithRetry = useCallback(async (
-    fetcher: () => Promise<any>,
-    setter: React.Dispatch<React.SetStateAction<EndpointState>>,
-    currentState: EndpointState
-  ) => {
-    if (currentState.isLoading) return; // Prevent concurrent requests
-    
-    try {
-      const data = await fetcher();
-      setter({
-        data,
-        isLoading: false,
-        error: null,
-        retryCount: 0
-      });
-    } catch (error) {
-      const nextRetryCount = currentState.retryCount + 1;
-      const backoffDelay = Math.min(1000 * Math.pow(2, nextRetryCount), 30000);
-      
-      console.error('Failed to fetch data:', error);
-      setter({
-        data: null,
-        isLoading: false,
-        error: 'Failed to load data',
-        retryCount: nextRetryCount
-      });
-
-      // Retry with exponential backoff
-      if (nextRetryCount <= 5) {
-        setTimeout(() => {
-          setter((prev: EndpointState) => ({ ...prev, isLoading: true }));
-          fetchWithRetry(fetcher, setter, { ...currentState, retryCount: nextRetryCount });
-        }, backoffDelay);
-      }
-    }
-  }, []);
-
-  const fetchDashboardStats = useCallback(() => {
-    return fetchWithRetry(
-      async () => {
-        const response = await baseApi.get('/dashboard/stats');
-        return response.data;
-      },
-      setDashboardStats,
-      dashboardStats
-    );
-  }, [fetchWithRetry, dashboardStats]);
-
-  const fetchSystemMetrics = useCallback(() => {
-    return fetchWithRetry(
-      async () => {
-        return await metricsService.getSystemMetrics();
-      },
-      setSystemMetrics,
-      systemMetrics
-    );
-  }, [fetchWithRetry, systemMetrics]);
-
-  const fetchHistoricalMetrics = useCallback(() => {
-    return fetchWithRetry(
-      async () => {
-        const response = await metricsService.getHistoricalMetrics();
-        return response;
-      },
-      setHistoricalMetrics,
-      historicalMetrics
-    );
-  }, [fetchWithRetry, historicalMetrics]);
-
-  // Single useEffect for initial data fetch
   useEffect(() => {
-    const fetchInitialData = async () => {
-      await Promise.all([
-        fetchDashboardStats(),
-        fetchSystemMetrics(),
-        fetchHistoricalMetrics()
-      ]);
-    };
-    fetchInitialData();
-
-    // Set up polling interval
-    const intervalId = setInterval(() => {
-      if (!document.hidden) { // Only fetch if tab is visible
-        fetchInitialData();
+    const fetchMetrics = async () => {
+      try {
+        setSystemMetrics(prev => ({ ...prev, isLoading: true }));
+        const data = await metricsService.getSystemMetrics();
+        setSystemMetrics({
+          data,
+          isLoading: false,
+          error: null,
+          retryCount: 0
+        });
+      } catch (error) {
+        console.error('Failed to fetch system metrics:', error);
+        setSystemMetrics(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to load system metrics',
+          retryCount: prev.retryCount + 1
+        }));
       }
-    }, 120000); // 2 minute interval
-
-    // Cleanup
-    return () => {
-      clearInterval(intervalId);
     };
-  }, [fetchDashboardStats, fetchSystemMetrics, fetchHistoricalMetrics]);
+
+    const fetchHistoricalMetrics = async () => {
+      try {
+        setHistoricalMetrics(prev => ({ ...prev, isLoading: true }));
+        const data = await metricsService.getHistoricalMetrics('24h');
+        setHistoricalMetrics({
+          data,
+          isLoading: false,
+          error: null,
+          retryCount: 0
+        });
+      } catch (error) {
+        console.error('Failed to fetch historical metrics:', error);
+        setHistoricalMetrics(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to load historical metrics',
+          retryCount: prev.retryCount + 1
+        }));
+      }
+    };
+
+    fetchMetrics();
+    fetchHistoricalMetrics();
+
+    // Set up polling for metrics every 30 seconds
+    const metricsInterval = setInterval(fetchMetrics, 30000);
+    const historicalInterval = setInterval(fetchHistoricalMetrics, 30000);
+
+    return () => {
+      clearInterval(metricsInterval);
+      clearInterval(historicalInterval);
+    };
+  }, []);
 
   const stats: Stats = dashboardStats.data || {
     totalProjects: 0,
@@ -312,7 +274,9 @@ export function Dashboard() {
         {dashboardStats.error && (
           <ErrorAlert 
             message="Failed to load dashboard statistics" 
-            onRetry={fetchDashboardStats} 
+            onRetry={() => {
+              // Implement retry logic
+            }} 
           />
         )}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -352,7 +316,9 @@ export function Dashboard() {
           {historicalMetrics.error ? (
             <ErrorAlert 
               message="Failed to load historical metrics" 
-              onRetry={fetchHistoricalMetrics}
+              onRetry={() => {
+                // Implement retry logic
+              }}
             />
           ) : historicalMetrics.isLoading ? (
             <Card className="p-6 card-gradient animate-pulse">
@@ -366,7 +332,9 @@ export function Dashboard() {
           {systemMetrics.error ? (
             <ErrorAlert 
               message="Failed to load system metrics" 
-              onRetry={fetchSystemMetrics}
+              onRetry={() => {
+                // Implement retry logic
+              }}
             />
           ) : systemMetrics.isLoading ? (
             <Card className="p-6 card-gradient animate-pulse">

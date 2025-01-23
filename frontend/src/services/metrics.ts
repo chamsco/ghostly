@@ -10,7 +10,7 @@
  * for display in the dashboard and monitoring components.
  */
 
-import { baseApi } from '@/lib/axios';
+import { apiInstance } from '@/lib/axios';
 
 /**
  * System metrics data structure
@@ -63,7 +63,7 @@ export type TimeRange = '1h' | '24h' | '7d' | '30d';
  * @throws Error if the metrics fetch fails
  */
 export async function getSystemMetrics(): Promise<SystemMetrics> {
-  const response = await baseApi.get<SystemMetrics>('/metrics/system');
+  const response = await apiInstance.get<SystemMetrics>('/metrics/system');
   return {
     ...response.data,
     memory: {
@@ -83,8 +83,8 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
  * @returns Promise containing array of metrics data points
  * @throws Error if the historical metrics fetch fails
  */
-export async function getHistoricalMetrics(timeRange: TimeRange): Promise<MetricsDataPoint[]> {
-  const response = await baseApi.get<MetricsDataPoint[]>(`/metrics/historical?timeRange=${timeRange}`);
+export async function getHistoricalMetrics(timeRange: TimeRange = '24h'): Promise<MetricsDataPoint[]> {
+  const response = await apiInstance.get<MetricsDataPoint[]>(`/metrics/historical?timeRange=${timeRange}`);
   return response.data;
 }
 
@@ -115,7 +115,7 @@ export function formatPercentage(value: number): string {
 
 export const metricsService = {
   async getSystemMetrics(): Promise<SystemMetrics> {
-    const response = await baseApi.get<SystemMetrics>('/metrics/system');
+    const response = await apiInstance.get<SystemMetrics>('/metrics/system');
     return {
       ...response.data,
       memory: {
@@ -129,8 +129,8 @@ export const metricsService = {
     };
   },
 
-  async getHistoricalMetrics(): Promise<MetricsDataPoint[]> {
-    const response = await baseApi.get<MetricsDataPoint[]>('/metrics/historical');
+  async getHistoricalMetrics(timeRange: TimeRange = '24h'): Promise<MetricsDataPoint[]> {
+    const response = await apiInstance.get<MetricsDataPoint[]>(`/metrics/historical?timeRange=${timeRange}`);
     return response.data;
   }
 }; 
