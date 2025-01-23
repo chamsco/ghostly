@@ -45,7 +45,7 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 export default function ProjectCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { servers, isLoading: isLoadingServers } = useServers();
+  const { servers = [], isLoading: isLoadingServers } = useServers();
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -97,6 +97,46 @@ export default function ProjectCreate() {
     }
   };
 
+  const renderServerSelection = () => {
+    if (isLoadingServers) {
+      return (
+        <div className="col-span-2 text-center py-4">Loading servers...</div>
+      );
+    }
+
+    if (!Array.isArray(servers) || servers.length === 0) {
+      return (
+        <div className="col-span-2 text-center py-4">
+          <p className="text-muted-foreground">No servers available</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2"
+            onClick={() => navigate('/servers/create')}
+          >
+            Add Server
+          </Button>
+        </div>
+      );
+    }
+
+    return servers.map((server) => (
+      <Button
+        key={server.id}
+        type="button"
+        variant={form.watch('defaultServerId') === server.id ? 'default' : 'outline'}
+        className="w-full justify-start"
+        onClick={() => form.setValue('defaultServerId', server.id)}
+      >
+        <div className="flex flex-col items-start">
+          <span className="font-medium">{server.name}</span>
+          <span className="text-sm text-muted-foreground">{server.host}</span>
+          <span className="text-sm text-muted-foreground">{server.status}</span>
+        </div>
+      </Button>
+    ));
+  };
+
   return (
     <div className="container mx-auto py-6">
       <Card>
@@ -141,41 +181,7 @@ export default function ProjectCreate() {
                 <div className="space-y-2">
                   <h3 className="text-lg font-medium">Default Server (Optional)</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    {isLoadingServers ? (
-                      <div className="col-span-2 text-center py-4">Loading servers...</div>
-                    ) : servers?.length === 0 ? (
-                      <div className="col-span-2 text-center py-4">
-                        <p className="text-muted-foreground">No servers available</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => navigate('/servers/create')}
-                        >
-                          Add Server
-                        </Button>
-                      </div>
-                    ) : servers ? (
-                      servers.map((server) => (
-                        <Button
-                          key={server.id}
-                          type="button"
-                          variant={form.watch('defaultServerId') === server.id ? 'default' : 'outline'}
-                          className="w-full justify-start"
-                          onClick={() => form.setValue('defaultServerId', server.id)}
-                        >
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">{server.name}</span>
-                            <span className="text-sm text-muted-foreground">{server.host}</span>
-                            <span className="text-sm text-muted-foreground">{server.status}</span>
-                          </div>
-                        </Button>
-                      ))
-                    ) : (
-                      <div className="col-span-2 text-center py-4">
-                        <p className="text-muted-foreground">Error loading servers</p>
-                      </div>
-                    )}
+                    {renderServerSelection()}
                   </div>
                 </div>
 
