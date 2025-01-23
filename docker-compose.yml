@@ -71,13 +71,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
-      #- "3001:80"
+      - "3001:80"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://168.119.111.140:3000/api
+      - VITE_API_URL=http://168.119.111.140:3000
     depends_on:
       - backend
     networks:
