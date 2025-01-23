@@ -10,21 +10,36 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  console.log('Configuring CORS with relaxed settings for debugging');
+  const allowedOrigins = ['http://168.119.111.140:3001', 'http://localhost:3001'];
+  console.log('Configuring CORS with allowed origins:', allowedOrigins);
+  
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('Origin rejected:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With'
+    ],
     exposedHeaders: ['Content-Range', 'X-Content-Range']
   });
-  console.log('CORS configuration applied:', app.getHttpAdapter().getInstance()._cors);
 
-  // Add detailed request logging middleware
+  // Add detailed request logging middleware with CORS headers
   app.use((req, res, next) => {
     console.log('=== Incoming Request ===');
     console.log('Method:', req.method);
     console.log('URL:', req.url);
+    console.log('Origin:', req.headers.origin);
     console.log('Headers:', req.headers);
     console.log('Body:', req.body);
     console.log('=======================');
