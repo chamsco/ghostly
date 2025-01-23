@@ -5,15 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { projectsApi } from '@/services/api.service';
 import type { Project } from '@/types/project';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 export function Projects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjects = async () => {
+      // Check for authentication first
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.log('🔒 No auth token found, redirecting to login');
+        navigate('/login');
+        return;
+      }
+
       try {
         setIsLoading(true);
         const data = await projectsApi.findAll();
@@ -31,7 +40,7 @@ export function Projects() {
     };
 
     fetchProjects();
-  }, [toast]);
+  }, [navigate, toast]);
 
   if (isLoading) {
     return <div>Loading...</div>;

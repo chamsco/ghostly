@@ -101,12 +101,21 @@ apiInstance.interceptors.response.use(
       stack: error.stack
     });
 
-    // Only redirect to login if not already on an auth route
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/auth')) {
-      console.log('🔒 Unauthorized - clearing token and redirecting to login');
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
+    // Handle 401 errors with improved logic
+    if (error.response?.status === 401) {
+      console.log('🔒 Unauthorized - checking current path');
+      const currentPath = window.location.pathname;
+      
+      // Only redirect if not already on login or register page
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register')) {
+        console.log('🔄 Redirecting to login page');
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+        // Return a resolved promise to break the chain
+        return Promise.resolve();
+      }
     }
+    
     return Promise.reject(error);
   }
 );
@@ -164,12 +173,21 @@ authApiInstance.interceptors.response.use(
       stack: error.stack
     });
 
-    // Only redirect to login if not already on an auth route
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/auth')) {
-      console.log('🔒 Unauthorized - clearing token and redirecting to login');
-      localStorage.removeItem('accessToken');
-      window.location.href = '/login';
+    // Handle 401 errors with improved logic
+    if (error.response?.status === 401) {
+      console.log('🔒 Unauthorized - checking current path');
+      const currentPath = window.location.pathname;
+      
+      // Only redirect if not already on login or register page
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register')) {
+        console.log('🔄 Redirecting to login page');
+        localStorage.removeItem('accessToken');
+        window.location.href = '/login';
+        // Return a resolved promise to break the chain
+        return Promise.resolve();
+      }
     }
+    
     return Promise.reject(error);
   }
 );
