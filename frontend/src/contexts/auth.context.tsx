@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('accessToken'));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   //const isPublicRoute = useMemo(() => {
   //  return PUBLIC_ROUTES.some(route => location.pathname.startsWith(route));
@@ -68,15 +69,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(true);
           const userData = await authApi.me();
           setUser(userData);
+          setIsAuthenticated(true);
         } catch (error) {
           console.error('Failed to get user data:', error);
           setUser(null);
+          setIsAuthenticated(false);
           localStorage.removeItem('accessToken');
           setAccessToken(null);
         } finally {
           setLoading(false);
         }
       } else {
+        setIsAuthenticated(false);
         setLoading(false);
       }
     };
@@ -92,9 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('accessToken', response.access_token);
         setAccessToken(response.access_token);
         setUser(response.user);
+        setIsAuthenticated(true);
       }
     } catch (error) {
       console.error('Login failed:', error);
+      setIsAuthenticated(false);
       throw error;
     } finally {
       setLoading(false);
@@ -110,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       setAccessToken(null);
+      setIsAuthenticated(false);
       localStorage.removeItem('accessToken');
       setLoading(false);
     }
@@ -123,9 +130,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('accessToken', response.access_token);
         setAccessToken(response.access_token);
         setUser(response.user);
+        setIsAuthenticated(true);
       }
     } catch (error) {
       console.error('Registration failed:', error);
+      setIsAuthenticated(false);
       throw error;
     } finally {
       setLoading(false);
@@ -269,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user,
-      isAuthenticated: !!user,
+      isAuthenticated,
       loading,
       error,
       login,
