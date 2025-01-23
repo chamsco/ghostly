@@ -1,7 +1,7 @@
 /**
  * Axios Configuration Module
  * 
-a * Sets up configured axios instances for making HTTP requests with:
+ * Sets up configured axios instances for making HTTP requests with:
  * - Dynamic base URL configuration based on environment
  * - Default headers and timeout
  * - Request/response interceptors
@@ -27,21 +27,34 @@ import { toast } from 'sonner';
 // Create axios instances with different base URLs
 export const apiInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  },
+    'Accept': 'application/json'
+  }
 });
 
 export const authApiInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://168.119.111.140:3001',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-  },
+    'Accept': 'application/json'
+  }
 });
 
-// Add request interceptor to include auth token
+// Add request interceptor for debugging
 apiInstance.interceptors.request.use(
   (config) => {
+    console.log('🚀 Outgoing Request:', {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers,
+      data: config.data,
+      withCredentials: config.withCredentials
+    });
+
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -49,14 +62,40 @@ apiInstance.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('❌ Request Error:', {
+      message: error.message,
+      config: error.config,
+      stack: error.stack
+    });
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor to handle errors
+// Add response interceptor for debugging
 apiInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Response Success:', {
+      url: response.config.url,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
+    console.error('❌ Response Error:', {
+      message: error.message,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      headers: error.config?.headers,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseHeaders: error.response?.headers,
+      responseData: error.response?.data,
+      stack: error.stack
+    });
     if (error.response?.status === 401) {
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
@@ -65,24 +104,60 @@ apiInstance.interceptors.response.use(
   }
 );
 
-// Add the same interceptors to authApiInstance
+// Add the same detailed logging to authApiInstance
 authApiInstance.interceptors.request.use(
   (config) => {
+    console.log('🔐 Auth Request:', {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers,
+      data: config.data,
+      withCredentials: config.withCredentials
+    });
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Added auth token to request');
     }
     return config;
   },
   (error) => {
+    console.error('❌ Auth Request Error:', {
+      message: error.message,
+      config: error.config,
+      stack: error.stack
+    });
     return Promise.reject(error);
   }
 );
 
 authApiInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ Auth Response Success:', {
+      url: response.config.url,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
+    console.error('❌ Auth Response Error:', {
+      message: error.message,
+      url: error.config?.url,
+      method: error.config?.method,
+      baseURL: error.config?.baseURL,
+      headers: error.config?.headers,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseHeaders: error.response?.headers,
+      responseData: error.response?.data,
+      stack: error.stack
+    });
     if (error.response?.status === 401) {
+      console.log('🔒 Unauthorized - clearing token and redirecting to login');
       localStorage.removeItem('accessToken');
       window.location.href = '/login';
     }
