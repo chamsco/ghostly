@@ -29,7 +29,6 @@ import { Component, ErrorInfo, ReactNode } from 'react';
 //import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { isAxiosError } from 'axios';
-import { apiInstance, authApiInstance } from '@/lib/axios';
 
 interface Props {
   children: ReactNode;
