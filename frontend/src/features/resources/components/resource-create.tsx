@@ -11,7 +11,6 @@ import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { EnvironmentVariablesEditor } from "@/components/environment-variables-editor";
-import { EnvironmentVariable } from "@/types/environment";
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
