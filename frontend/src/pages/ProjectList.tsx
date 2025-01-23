@@ -10,7 +10,7 @@
  * - Auto-refresh project list
  */
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,7 @@ export function ProjectList() {
     };
 
     fetchProjects();
-  }, [toast]);
+  }, []);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -52,9 +52,9 @@ export function ProjectList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Projects</h1>
-        <Button onClick={() => navigate('/projects/create')}>
-          Create Project
-        </Button>
+        <Link to="/projects/create">
+          <Button>Create Project</Button>
+        </Link>
       </div>
 
       <div className="grid gap-4">
@@ -65,9 +65,9 @@ export function ProjectList() {
                 <h2 className="text-2xl font-semibold">{project.name}</h2>
                 <p className="text-sm text-muted-foreground">{project.description}</p>
               </div>
-              <Button variant="outline" onClick={() => navigate(`/projects/${project.id}`)}>
-                View Details
-              </Button>
+              <Link to={`/projects/${project.id}`}>
+                <Button variant="outline">View Details</Button>
+              </Link>
             </div>
             <div className="mt-4 flex items-center gap-4">
               <Badge variant="secondary">
@@ -90,12 +90,9 @@ export function ProjectList() {
               <p className="text-sm text-muted-foreground mt-1">
                 Create your first project to get started
               </p>
-              <Button
-                className="mt-4"
-                onClick={() => navigate('/projects/create')}
-              >
-                Create Project
-              </Button>
+              <Link to="/projects/create">
+                <Button className="mt-4">Create Project</Button>
+              </Link>
             </div>
           </Card>
         )}

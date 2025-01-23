@@ -13,7 +13,7 @@
  * - Layout (optional wrapper component)
  * - Protection (auth/admin guards)
  */
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { QueryClient } from '@tanstack/react-query';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -30,11 +30,12 @@ import { Projects } from '@/pages/Projects';
 import { Users } from '@/pages/Users';
 import { Profile } from '@/pages/Profile';
 import Settings from '@/pages/Settings';
-import  ProjectCreate  from '@/pages/ProjectCreate';
+import ProjectCreate from '@/pages/ProjectCreate';
 import { ProjectSettings } from '@/pages/ProjectSettings';
 import { ProjectResources } from '@/pages/ProjectResources';
 import { Servers } from '@/pages/Servers';
 import { ServerCreatePage } from '@/pages/ServerCreatePage';
+import ProjectDetail from '@/pages/ProjectDetail';
 
 // Configure React Query client with custom defaults
 // - Disable automatic retries on failed requests
@@ -60,6 +61,10 @@ function ProtectedLayout() {
 export const router = createBrowserRouter([
   {
     path: '/',
+    element: <Navigate to="/register" replace />,
+  },
+  {
+    path: '/',
     element: <ProtectedLayout />,
     errorElement: <ProjectErrorBoundary />,
     children: [
@@ -70,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects',
         element: <Projects />
+      },
+      {
+        path: 'projects/:id',
+        element: <ProjectDetail />
       },
       {
         path: 'projects/create',
