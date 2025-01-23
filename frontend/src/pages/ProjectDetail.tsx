@@ -61,9 +61,15 @@ export default function ProjectDetail() {
       try {
         setIsLoading(true);
         const data = await projectsApi.findOne(id);
-        setProject(data);
-        if (data.environments.length > 0) {
-          setSelectedEnvironment(data.environments[0]);
+        // Initialize empty arrays if they don't exist
+        const projectWithDefaults = {
+          ...data,
+          environments: data.environments || [],
+          resources: data.resources || []
+        };
+        setProject(projectWithDefaults);
+        if (projectWithDefaults.environments.length > 0) {
+          setSelectedEnvironment(projectWithDefaults.environments[0]);
         }
       } catch (error) {
         console.error('Failed to fetch project:', error);
