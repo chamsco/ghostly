@@ -1,14 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth.context';
 import { Activity, Server, Cpu, HelpCircle, AlertCircle } from 'lucide-react';
-import { baseApi } from '@/lib/axios';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { metricsService, SystemMetrics } from '@/services/metrics';
 import { formatBytes } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { apiInstance } from '@/lib/axios';
 
 interface Stats {
   totalProjects: number;
@@ -200,6 +200,27 @@ export function Dashboard() {
   });
 
   useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setDashboardStats(prev => ({ ...prev, isLoading: true }));
+        const response = await apiInstance.get('/dashboard/stats');
+        setDashboardStats({
+          data: response.data,
+          isLoading: false,
+          error: null,
+          retryCount: 0
+        });
+      } catch (error) {
+        console.error('Failed to fetch dashboard stats:', error);
+        setDashboardStats(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to load dashboard statistics',
+          retryCount: prev.retryCount + 1
+        }));
+      }
+    };
+
     const fetchMetrics = async () => {
       try {
         setSystemMetrics(prev => ({ ...prev, isLoading: true }));
@@ -242,14 +263,18 @@ export function Dashboard() {
       }
     };
 
+    // Initial fetch
+    fetchDashboardStats();
     fetchMetrics();
     fetchHistoricalMetrics();
 
-    // Set up polling for metrics every 30 seconds
-    const metricsInterval = setInterval(fetchMetrics, 30000);
+    // Set up polling intervals
+    const statsInterval = setInterval(fetchDashboardStats, 60000); // Every minute
+    const metricsInterval = setInterval(fetchMetrics, 30000);     // Every 30 seconds
     const historicalInterval = setInterval(fetchHistoricalMetrics, 30000);
 
     return () => {
+      clearInterval(statsInterval);
       clearInterval(metricsInterval);
       clearInterval(historicalInterval);
     };
