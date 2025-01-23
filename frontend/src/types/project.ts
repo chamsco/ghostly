@@ -28,11 +28,10 @@ export enum ServiceType {
   NODEJS = 'nodejs',
   PYTHON = 'python',
   PHP = 'php',
-  DOCKER = 'docker',
-  MYSQL = 'mysql',
-  POSTGRESQL = 'postgresql',
-  MONGODB = 'mongodb',
-  REDIS = 'redis'
+  CUSTOM_DOCKER = 'custom_docker',
+  SUPABASE = 'supabase',
+  POCKETBASE = 'pocketbase',
+  APPWRITE = 'appwrite'
 }
 
 export enum EnvironmentType {
@@ -120,7 +119,7 @@ export interface CreateResourceDto {
   type: ServiceType;
   serverId: string;
   environmentId: string;
-  environmentVariables?: EnvironmentVariable[];
+  environmentVariables?: EnvironmentVariableDto[];
   // Database specific fields
   databaseType?: DatabaseType;
   databaseName?: string;

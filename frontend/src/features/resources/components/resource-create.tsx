@@ -1,36 +1,22 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
-import { ResourceType, DatabaseType, ServiceType, type Resource } from '@/types/project';
-import { projectsApi } from '@/services/api.service';
-import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
-import { Plus } from 'lucide-react';
-//import type { EnvironmentVariable } from '@/types/environment';
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { projectsApi } from "@/services/api.service";
+import { ServiceType } from "@/types/project";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { EnvironmentVariablesEditor } from "@/components/environment-variables-editor";
+import { EnvironmentVariable } from "@/types/environment";
+import { generateUUID } from "@/lib/utils";
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(3, "Name must be at least 3 characters"),
   type: z.nativeEnum(ServiceType),
-  // Database specific fields
-  databaseType: z.nativeEnum(DatabaseType).optional(),
-  databaseName: z.string().optional(),
-  adminEmail: z.string().email().optional(),
-  initialDatabase: z.string().optional(),
-  dbPassword: z.string().optional(),
-  // Service specific fields
-  serviceType: z.nativeEnum(ServiceType).optional(),
-  repositoryUrl: z.string().url().optional(),
-  dockerComposeContent: z.string().optional(),
-  dockerImageUrl: z.string().optional(),
-  // Website specific fields
-  branch: z.string().optional(),
-  // Common fields
   environmentVariables: z.array(z.object({
     id: z.string(),
     key: z.string(),
@@ -43,81 +29,82 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface ResourceCreateProps {
+interface Props {
   projectId: string;
   environmentId: string;
-  serverId?: string;
-  onResourceCreated?: (resource: Resource) => void;
-  variant?: 'default' | 'outline' | 'secondary' | 'ghost';
+  variant?: "default" | "outline" | "secondary";
   className?: string;
   children?: React.ReactNode;
 }
 
-export function ResourceCreate({ 
-  projectId, 
-  environmentId,
-  serverId,
-  onResourceCreated,
-  variant = 'default',
-  className,
-  children 
-}: ResourceCreateProps) {
-  const [open, setOpen] = useState(false);
+export function ResourceCreate({ projectId, environmentId, variant = "default", className, children }: Props) {
   const { toast } = useToast();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
+      name: "",
       type: ServiceType.NODEJS,
-    },
+      environmentVariables: []
+    }
   });
 
   const onSubmit = async (data: FormValues) => {
     try {
-      if (!serverId) {
-        throw new Error('Server ID is required');
-      }
-
-      const resource = await projectsApi.createResource(projectId, {
-        ...data,
+      const resourceData = {
+        name: data.name,
+        type: data.type,
         environmentId,
-        serverId
-      });
+        serverId: projectId,
+        environmentVariables: data.environmentVariables.map(({ key, value, isSecret }) => ({
+          key,
+          value,
+          isSecret
+        }))
+      };
+
+      await projectsApi.createResource(projectId, resourceData);
       toast({
-        title: 'Success',
-        description: 'Resource created successfully',
+        title: "Success",
+        description: "Resource created successfully"
       });
-      onResourceCreated?.(resource);
       form.reset();
-      setOpen(false);
     } catch (error) {
-      console.error('Failed to create resource:', error);
+      console.error("Error creating resource:", error);
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create resource',
+        title: "Error",
+        description: "Failed to create resource",
+        variant: "destructive"
       });
     }
   };
 
+  const handleAddVariable = () => {
+    const now = new Date().toISOString();
+    const newVariable: EnvironmentVariable = {
+      id: generateUUID(),
+      key: "",
+      value: "",
+      isSecret: false,
+      createdAt: now,
+      updatedAt: now
+    };
+    const currentVars = form.getValues("environmentVariables");
+    form.setValue("environmentVariables", [...currentVars, newVariable]);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant={variant} className={className}>
-          {children || (
-            <>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Resource
-            </>
-          )}
-        </Button>
-      </DialogTrigger>
+    <Dialog>
+      <Button variant={variant} className={className}>
+        {children || (
+          <>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Resource
+          </>
+        )}
+      </Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Resource</DialogTitle>
-          <DialogDescription>
-            Add a new resource to your environment
-          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -128,52 +115,52 @@ export function ResourceCreate({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="my-service" />
+                    <Input {...field} />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value: ServiceType) => field.onChange(value)}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select a type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={ServiceType.NODEJS}>Node.js</SelectItem>
                       <SelectItem value={ServiceType.PYTHON}>Python</SelectItem>
                       <SelectItem value={ServiceType.PHP}>PHP</SelectItem>
-                      <SelectItem value={ServiceType.DOCKER}>Docker</SelectItem>
-                      <SelectItem value={ServiceType.MYSQL}>MySQL</SelectItem>
-                      <SelectItem value={ServiceType.POSTGRESQL}>PostgreSQL</SelectItem>
-                      <SelectItem value={ServiceType.MONGODB}>MongoDB</SelectItem>
-                      <SelectItem value={ServiceType.REDIS}>Redis</SelectItem>
+                      <SelectItem value={ServiceType.CUSTOM_DOCKER}>Docker</SelectItem>
+                      <SelectItem value={ServiceType.SUPABASE}>Supabase</SelectItem>
+                      <SelectItem value={ServiceType.POCKETBASE}>PocketBase</SelectItem>
+                      <SelectItem value={ServiceType.APPWRITE}>AppWrite</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
-
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                Create
-              </Button>
-            </div>
+            <FormField
+              control={form.control}
+              name="environmentVariables"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Environment Variables</FormLabel>
+                  <FormControl>
+                    <EnvironmentVariablesEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <Button type="submit">Create Resource</Button>
           </form>
         </Form>
       </DialogContent>
