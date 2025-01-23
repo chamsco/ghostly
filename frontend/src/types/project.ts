@@ -28,7 +28,11 @@ export enum ServiceType {
   NODEJS = 'nodejs',
   PYTHON = 'python',
   PHP = 'php',
-  DOCKER = 'docker'
+  DOCKER = 'docker',
+  MYSQL = 'mysql',
+  POSTGRESQL = 'postgresql',
+  MONGODB = 'mongodb',
+  REDIS = 'redis'
 }
 
 export enum EnvironmentType {
@@ -41,9 +45,14 @@ export enum EnvironmentType {
 export interface Resource {
   id: string;
   name: string;
-  type: ResourceType;
+  type: ServiceType;
   serverId: string;
+  status: ProjectStatus;
+  error?: string;
+  url?: string;
   environmentId: string;
+  projectId: string;
+  environmentVariables?: EnvironmentVariable[];
   // Database specific fields
   databaseType?: DatabaseType;
   databaseName?: string;
@@ -57,8 +66,6 @@ export interface Resource {
   dockerImageUrl?: string;
   // Website specific fields
   branch?: string;
-  // Common fields
-  environmentVariables?: EnvironmentVariable[];
   createdAt: string;
   updatedAt: string;
 }
@@ -78,11 +85,12 @@ export interface Project {
   id: string;
   name: string;
   description: string;
-  defaultServerId?: string;
+  serverId?: string;
   ownerId: string;
   status: ProjectStatus;
-  environments: Environment[];
   resources: Resource[];
+  environments: Environment[];
+  environmentVariables?: EnvironmentVariable[];
   createdAt: string;
   updatedAt: string;
 }
@@ -109,7 +117,7 @@ export interface CreateEnvironmentDto {
 
 export interface CreateResourceDto {
   name: string;
-  type: ResourceType;
+  type: ServiceType;
   serverId: string;
   environmentId: string;
   environmentVariables?: EnvironmentVariable[];
