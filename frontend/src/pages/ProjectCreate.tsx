@@ -155,8 +155,8 @@ export default function ProjectCreate() {
                           Add Server
                         </Button>
                       </div>
-                    ) : (
-                      servers?.map((server) => (
+                    ) : servers ? (
+                      servers.map((server) => (
                         <Button
                           key={server.id}
                           type="button"
@@ -171,6 +171,10 @@ export default function ProjectCreate() {
                           </div>
                         </Button>
                       ))
+                    ) : (
+                      <div className="col-span-2 text-center py-4">
+                        <p className="text-muted-foreground">Error loading servers</p>
+                      </div>
                     )}
                   </div>
                 </div>
