@@ -1,5 +1,5 @@
-import * as session from 'express-session';
-import * as connectRedis from 'connect-redis';
+import session from 'express-session';
+import connectRedis from 'connect-redis';
 import { createClient, RedisClientType } from 'redis';
 
 export const redisClient: RedisClientType = createClient({
