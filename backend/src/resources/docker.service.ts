@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
+// TODO: Add a way to get the docker socket path
 @Injectable()
 export class DockerService {
   private readonly docker: Dockerode;
