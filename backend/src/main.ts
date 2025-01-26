@@ -12,12 +12,35 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // Configure CORS first
+  // Configure CORS first, before any middleware
+  const allowedOrigins = ['http://168.119.111.140:3001', 'http://localhost:3001'];
+  console.log('Configuring CORS with allowed origins:', allowedOrigins);
+  
   app.enableCors({
-    origin: 'http://168.119.111.140:3001',
-    credentials: true
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('Origin rejected:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+      'Access-Control-Allow-Origin',
+      'Access-Control-Allow-Credentials'
+    ],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: true,
+    maxAge: 3600
   });
 
+  // Add body parser before other middleware
   app.use(cookieParser());
 
   // Global validation pipe
@@ -53,7 +76,7 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false,
+        secure: false, // Set to false for non-HTTPS
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: 'lax',
         path: '/'
