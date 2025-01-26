@@ -45,7 +45,7 @@ import { CreateEnvironmentVariablesTable1710000000005 } from './migrations/17100
           CreateResourcesTable1710000000002,
           AddServerAndEnvironmentIds1710000000003,
           CreateEnvironmentsTable1710000000004,
-          CreateEnvironmentVariablesTable1710000000005,
+          CreateEnvironmentVariablesTable1710000000005
         ],
         migrationsRun: true,
         synchronize: false,
