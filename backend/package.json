@@ -17,7 +17,7 @@
     "@nestjs/passport": "^11.0.2",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "7.1.17",
-    "@nestjs/typeorm": "^10.2.1",
+    "@nestjs/typeorm": "^10.0.2",
     "@simplewebauthn/server": "^13.1.0",
     "@types/dockerode": "^3.3.34",
     "@types/jsonwebtoken": "^9.0.7",
@@ -38,7 +38,7 @@
     "redis": "^4.6.7",
     "speakeasy": "^2.0.0",
     "systeminformation": "^5.25.11",
-    "typeorm": "0.3.20"
+    "typeorm": "^0.3.20"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
