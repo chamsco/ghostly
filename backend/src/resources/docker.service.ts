@@ -1,18 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resource } from './entities/resource.entity';
-import Docker from 'dockerode';
+import Dockerode from 'dockerode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
 @Injectable()
 export class DockerService {
-  private readonly docker: Docker;
+  private readonly docker: Dockerode;
   private readonly logger = new Logger(DockerService.name);
   private readonly workspaceDir: string;
 
   constructor() {
-    this.docker = new Docker();
+    this.docker = new Dockerode();
     this.workspaceDir = path.join(os.tmpdir(), 'squadron-workspace');
     if (!fs.existsSync(this.workspaceDir)) {
       fs.mkdirSync(this.workspaceDir, { recursive: true });
