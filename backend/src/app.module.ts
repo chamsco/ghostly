@@ -17,6 +17,11 @@ import { Server } from './servers/entities/server.entity';
 import { SecurityMiddleware } from './middleware/security.middleware';
 import { MetricsModule } from './metrics/metrics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { InitialSchema1710000000000 } from './migrations/1710000000000-InitialSchema';
+import { AddServerAndEnvironmentIds1710000000001 } from './migrations/1710000000001-AddServerAndEnvironmentIds';
+import { CreateResourcesTable1710000000002 } from './migrations/1710000000002-CreateResourcesTable';
+import { UpdateEnvironmentRelations1710000000003 } from './migrations/1710000000003-UpdateEnvironmentRelations';
+import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
 
 @Module({
   imports: [
@@ -33,7 +38,13 @@ import { DashboardModule } from './dashboard/dashboard.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
         entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
-        migrations: ['dist/migrations/*.js'],
+        migrations: [
+          InitialSchema1710000000000,
+          AddServerAndEnvironmentIds1710000000001,
+          CreateResourcesTable1710000000002,
+          UpdateEnvironmentRelations1710000000003,
+          CreateEnvironmentVariablesTable1710000000004
+        ],
         migrationsRun: true,
         synchronize: false,
         logging: configService.get('NODE_ENV') === 'development',

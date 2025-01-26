@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class UpdateEnvironmentRelations1710000000002 implements MigrationInterface {
+export class UpdateEnvironmentRelations1710000000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create environment_type enum
     await queryRunner.query(`
