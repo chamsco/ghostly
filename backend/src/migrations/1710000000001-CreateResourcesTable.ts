@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateResourcesTable1710000000002 implements MigrationInterface {
+export class CreateResourcesTable1710000000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create resource type enum
     await queryRunner.query(`

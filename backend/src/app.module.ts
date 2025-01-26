@@ -18,8 +18,8 @@ import { SecurityMiddleware } from './middleware/security.middleware';
 import { MetricsModule } from './metrics/metrics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { InitialSchema1710000000000 } from './migrations/1710000000000-InitialSchema';
-import { AddServerAndEnvironmentIds1710000000001 } from './migrations/1710000000001-AddServerAndEnvironmentIds';
-import { CreateResourcesTable1710000000002 } from './migrations/1710000000002-CreateResourcesTable';
+import { AddServerAndEnvironmentIds1710000000002 } from './migrations/1710000000002-AddServerAndEnvironmentIds';
+import { CreateResourcesTable1710000000001 } from './migrations/1710000000001-CreateResourcesTable';
 import { UpdateEnvironmentRelations1710000000003 } from './migrations/1710000000003-UpdateEnvironmentRelations';
 import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
 
@@ -40,8 +40,8 @@ import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/17100
         entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
         migrations: [
           InitialSchema1710000000000,
-          AddServerAndEnvironmentIds1710000000001,
-          CreateResourcesTable1710000000002,
+          AddServerAndEnvironmentIds1710000000002,
+          CreateResourcesTable1710000000001,
           UpdateEnvironmentRelations1710000000003,
           CreateEnvironmentVariablesTable1710000000004
         ],
