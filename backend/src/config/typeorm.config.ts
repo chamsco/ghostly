@@ -6,6 +6,10 @@ import { Resource } from '../projects/entities/resource.entity';
 import { Environment } from '../projects/entities/environment.entity';
 import { EnvironmentVariable } from '../projects/entities/environment-variable.entity';
 import { Server } from '../servers/entities/server.entity';
+import { InitialSchema1710000000000 } from '../migrations/1710000000000-InitialSchema';
+import { AddServerAndEnvironmentIds1710000000001 } from '../migrations/1710000000001-AddServerAndEnvironmentIds';
+import { CreateResourcesTable1710000000000 } from '../migrations/1710000000000-CreateResourcesTable';
+import { CreateEnvironmentVariablesTable1710000000003 } from '../migrations/1710000000003-CreateEnvironmentVariablesTable';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
@@ -15,8 +19,14 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASSWORD || 'squadronpass',
   database: process.env.DB_DATABASE || 'squadron',
   entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
-  migrations: [/* list of migration classes */],
+  migrations: [
+    InitialSchema1710000000000,
+    AddServerAndEnvironmentIds1710000000001,
+    CreateResourcesTable1710000000000,
+    CreateEnvironmentVariablesTable1710000000003
+  ],
   migrationsRun: true,
+  migrationsTransactionMode: 'each',
   synchronize: false,
   logging: true,
   dropSchema: false, // Don't drop existing tables
