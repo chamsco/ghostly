@@ -82,7 +82,7 @@ export class Resource {
   @Column()
   projectId: string;
 
-  @ManyToOne(() => Environment, environment => environment.resources)
+  @ManyToOne(() => Environment)
   environment: Environment;
 
   @Column()
