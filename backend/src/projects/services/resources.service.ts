@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Resource } from './entities/resource.entity';
-import { CreateResourceDto } from './dto/create-resource.dto';
-import { User } from '../users/entities/user.entity';
-import { Project } from '../projects/entities/project.entity';
-import { ProjectStatus } from '../projects/types/project.types';
+import { Resource } from '../../resources/entities/resource.entity';
+import { CreateResourceDto } from '../../resources/dto/create-resource.dto';
+import { User } from '../../users/entities/user.entity';
+import { Project } from '../entities/project.entity';
+import { ProjectStatus, ResourceType } from '../types/project.types';
 import { DockerService } from './docker.service';
 import {
   ResourceNotFoundException,
@@ -13,7 +13,7 @@ import {
   ResourceDeploymentException,
   ResourceOperationException,
   InvalidResourceConfigException,
-} from '../common/exceptions/resource.exceptions';
+} from '../../common/exceptions/resource.exceptions';
 
 @Injectable()
 export class ResourcesService {
@@ -177,9 +177,13 @@ export class ResourcesService {
         // Add database-specific validation
         break;
 
+      case ResourceType.WEBSITE:
+        // Add website-specific validation
+        break;
+
       default:
         throw new InvalidResourceConfigException(
-          `Unsupported resource type: ${type}`
+          `Invalid resource type: ${type}`
         );
     }
   }

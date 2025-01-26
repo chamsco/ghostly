@@ -13,8 +13,8 @@ import {
   HttpStatus
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ResourcesService } from './resources.service';
-import { CreateResourceDto } from './dto/create-resource.dto';
+import { ResourcesService } from '../projects/services/resources.service';
+import { CreateResourceDto } from '../projects/dto/create-resource.dto';
 import { Resource } from './entities/resource.entity';
 import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 import { User } from '../users/entities/user.entity';

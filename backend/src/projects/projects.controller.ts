@@ -9,9 +9,8 @@ import { Environment } from './entities/environment.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateResourceDto } from './dto/create-resource.dto';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
-import { EnvTemplateRequestDto, EnvTemplateResponseDto } from './dto/env-template.dto';
-import { EnvTemplateService } from './services/env-template.service';
-import { Request } from 'express';
+import { CreateEnvTemplateDto } from './dto/env-template.dto';
+import { EnvTemplateService } from './services';
 import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 
 @Controller('projects')
@@ -249,7 +248,7 @@ export class ProjectsController {
   }
 
   @Post('env-templates')
-  async getEnvTemplate(@Body() request: EnvTemplateRequestDto): Promise<EnvTemplateResponseDto> {
+  async getEnvTemplate(@Body() request: CreateEnvTemplateDto): Promise<{ variables: { key: string; value: string; isSecret: boolean; description: string; }[] }> {
     try {
       return this.envTemplateService.getTemplate(request.projectType);
     } catch (error) {

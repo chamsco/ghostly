@@ -10,9 +10,7 @@ import { InitialSchema1710000000000 } from '../migrations/1710000000000-InitialS
 import { CreateProjectsTable1710000000001 } from '../migrations/1710000000001-CreateProjectsTable';
 import { CreateResourcesTable1710000000002 } from '../migrations/1710000000002-CreateResourcesTable';
 import { AddServerAndEnvironmentIds1710000000003 } from '../migrations/1710000000003-AddServerAndEnvironmentIds';
-import { CreateEnvironmentVariablesTable1710000000004 } from '../migrations/1710000000004-CreateEnvironmentVariablesTable';
-import { UpdateEnvironmentRelations1710000000005 } from '../migrations/1710000000005-UpdateEnvironmentRelations';
-
+import { CreateEnvironmentsTable1710000000004 } from '../migrations/1710000000004-CreateEnvironmentsTable';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
@@ -25,10 +23,9 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   migrations: [
     InitialSchema1710000000000,
     CreateProjectsTable1710000000001,
-    AddServerAndEnvironmentIds1710000000003,
     CreateResourcesTable1710000000002,
-    UpdateEnvironmentRelations1710000000005,
-    CreateEnvironmentVariablesTable1710000000004
+    AddServerAndEnvironmentIds1710000000003,
+    CreateEnvironmentsTable1710000000004,
   ],
   migrationsRun: true,
   migrationsTransactionMode: 'each',

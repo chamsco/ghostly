@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Resource } from './entities/resource.entity';
+import { Resource } from '../../resources/entities/resource.entity';
 import Dockerode from 'dockerode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { ServiceType } from '../types/project.types';
 
 // TODO: Add a way to get the docker socket path
 @Injectable()
@@ -34,11 +35,11 @@ export class DockerService {
         Image: resource.dockerImageUrl || 'node:18',
         name: `squadron-${resource.id}`,
         ExposedPorts: {
-          [`${resource.serviceType === 'nodejs' ? '3000' : '80'}/tcp`]: {}
+          [`${resource.serviceType === ServiceType.NODE ? '3000' : '80'}/tcp`]: {}
         },
         HostConfig: {
           PortBindings: {
-            [`${resource.serviceType === 'nodejs' ? '3000' : '80'}/tcp`]: [{ HostPort: '3000' }]
+            [`${resource.serviceType === ServiceType.NODE ? '3000' : '80'}/tcp`]: [{ HostPort: '3000' }]
           }
         },
         Env: resource.environmentVariables?.map(({ key, value }) => `${key}=${value}`) || []

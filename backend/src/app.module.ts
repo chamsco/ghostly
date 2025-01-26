@@ -21,9 +21,8 @@ import { InitialSchema1710000000000 } from './migrations/1710000000000-InitialSc
 import { CreateProjectsTable1710000000001 } from './migrations/1710000000001-CreateProjectsTable';
 import { CreateResourcesTable1710000000002 } from './migrations/1710000000002-CreateResourcesTable';
 import { AddServerAndEnvironmentIds1710000000003 } from './migrations/1710000000003-AddServerAndEnvironmentIds';
-import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
-import { UpdateEnvironmentRelations1710000000005 } from './migrations/1710000000005-UpdateEnvironmentRelations';
-
+import { CreateEnvironmentsTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentsTable';
+import { CreateEnvironmentVariablesTable1710000000005 } from './migrations/1710000000005-CreateEnvironmentVariablesTable';
 
 @Module({
   imports: [
@@ -45,8 +44,8 @@ import { UpdateEnvironmentRelations1710000000005 } from './migrations/1710000000
           CreateProjectsTable1710000000001,
           CreateResourcesTable1710000000002,
           AddServerAndEnvironmentIds1710000000003,
-          CreateEnvironmentVariablesTable1710000000004,
-          UpdateEnvironmentRelations1710000000005 
+          CreateEnvironmentsTable1710000000004,
+          CreateEnvironmentVariablesTable1710000000005,
         ],
         migrationsRun: true,
         synchronize: false,

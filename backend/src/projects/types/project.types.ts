@@ -5,12 +5,10 @@
  */
 
 export enum ProjectType {
-  NODEJS = 'nodejs',
-  PYTHON = 'python',
-  PHP = 'php',
-  DOCKER = 'docker',
-  DATABASE = 'database',
-  WEBSITE = 'website'
+  NODE = 'NODE',
+  PYTHON = 'PYTHON',
+  DOCKER = 'DOCKER',
+  OTHER = 'OTHER'
 }
 
 export enum EnvironmentType {
@@ -30,20 +28,15 @@ export enum ResourceType {
 }
 
 export enum DatabaseType {
-  POSTGRESQL = 'postgresql',
+  POSTGRES = 'postgres',
   MYSQL = 'mysql',
-  MONGODB = 'mongodb',
-  NONE = 'none'
+  MONGODB = 'mongodb'
 }
 
 export enum ServiceType {
-  NODEJS = 'nodejs',
+  NODE = 'node',
   PYTHON = 'python',
-  PHP = 'php',
-  CUSTOM_DOCKER = 'custom_docker',
-  SUPABASE = 'supabase',
-  POCKETBASE = 'pocketbase',
-  APPWRITE = 'appwrite'
+  DOCKER = 'docker'
 }
 
 export enum ProjectStatus {
