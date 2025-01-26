@@ -15,7 +15,9 @@ export class EnvironmentVariable {
   @Column()
   isSecret: boolean;
 
-  @ManyToOne(() => Environment, environment => environment.variables)
+  @ManyToOne(() => Environment, environment => environment.variables, {
+    onDelete: 'CASCADE'
+  })
   environment: Environment;
 
   @CreateDateColumn()
