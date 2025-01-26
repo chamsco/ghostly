@@ -88,7 +88,7 @@ export class Resource {
   })
   @JoinColumn({ name: 'environmentId' })
   environment: Environment;
-
+  
   @Column()
   environmentId: string;
 

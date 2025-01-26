@@ -7,10 +7,11 @@ import { Environment } from '../projects/entities/environment.entity';
 import { EnvironmentVariable } from '../projects/entities/environment-variable.entity';
 import { Server } from '../servers/entities/server.entity';
 import { InitialSchema1710000000000 } from '../migrations/1710000000000-InitialSchema';
-import { AddServerAndEnvironmentIds1710000000002 } from '../migrations/1710000000002-AddServerAndEnvironmentIds';
-import { CreateResourcesTable1710000000001 } from '../migrations/1710000000001-CreateResourcesTable';
-import { UpdateEnvironmentRelations1710000000003 } from '../migrations/1710000000003-UpdateEnvironmentRelations';
+import { CreateProjectsTable1710000000001 } from '../migrations/1710000000001-CreateProjectsTable';
+import { CreateResourcesTable1710000000002 } from '../migrations/1710000000002-CreateResourcesTable';
+import { AddServerAndEnvironmentIds1710000000003 } from '../migrations/1710000000003-AddServerAndEnvironmentIds';
 import { CreateEnvironmentVariablesTable1710000000004 } from '../migrations/1710000000004-CreateEnvironmentVariablesTable';
+import { UpdateEnvironmentRelations1710000000005 } from '../migrations/1710000000005-UpdateEnvironmentRelations';
 
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
@@ -23,9 +24,10 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
   migrations: [
     InitialSchema1710000000000,
-    CreateResourcesTable1710000000001,
-    AddServerAndEnvironmentIds1710000000002,
-    UpdateEnvironmentRelations1710000000003,
+    CreateProjectsTable1710000000001,
+    AddServerAndEnvironmentIds1710000000003,
+    CreateResourcesTable1710000000002,
+    UpdateEnvironmentRelations1710000000005,
     CreateEnvironmentVariablesTable1710000000004
   ],
   migrationsRun: true,
