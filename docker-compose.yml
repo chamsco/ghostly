@@ -62,6 +62,7 @@ services:
     volumes:
       - ./backend/src:/usr/src/app/src
       - ./backend/logs:/usr/src/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - app_network
 
