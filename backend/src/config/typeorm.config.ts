@@ -8,8 +8,8 @@ import { EnvironmentVariable } from '../projects/entities/environment-variable.e
 import { Server } from '../servers/entities/server.entity';
 import { InitialSchema1710000000000 } from '../migrations/1710000000000-InitialSchema';
 import { AddServerAndEnvironmentIds1710000000001 } from '../migrations/1710000000001-AddServerAndEnvironmentIds';
-import { CreateResourcesTable1710000000000 } from '../migrations/1710000000000-CreateResourcesTable';
-import { CreateEnvironmentVariablesTable1710000000003 } from '../migrations/1710000000003-CreateEnvironmentVariablesTable';
+import { CreateResourcesTable1710000000000 } from '../migrations/1710000000002-CreateResourcesTable';
+import { CreateEnvironmentVariablesTable1710000000003 } from '../migrations/1710000000004-CreateEnvironmentVariablesTable';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
