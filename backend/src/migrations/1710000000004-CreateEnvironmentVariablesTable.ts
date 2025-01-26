@@ -1,6 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateEnvironmentVariablesTable1710000000003 implements MigrationInterface {
+export class CreateEnvironmentVariablesTable1710000000004
+ implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE environment_variables (
