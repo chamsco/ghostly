@@ -12,6 +12,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  // Configure CORS first
   const allowedOrigins = ['http://168.119.111.140:3001', 'http://localhost:3001'];
   console.log('Configuring CORS with allowed origins:', allowedOrigins);
   
@@ -34,18 +35,6 @@ async function bootstrap() {
       'X-Requested-With'
     ],
     exposedHeaders: ['Content-Range', 'X-Content-Range']
-  });
-
-  // Add detailed request logging middleware with CORS headers
-  app.use((req, res, next) => {
-    console.log('=== Incoming Request ===');
-    console.log('Method:', req.method);
-    console.log('URL:', req.url);
-    console.log('Origin:', req.headers.origin);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    console.log('=======================');
-    next();
   });
 
   app.use(cookieParser());
@@ -83,13 +72,26 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for non-HTTPS
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: 'lax',
         path: '/',
+        domain: '168.119.111.140'
       },
     }),
   );
+
+  // Add request logging middleware after CORS
+  app.use((req, res, next) => {
+    console.log('=== Incoming Request ===');
+    console.log('Method:', req.method);
+    console.log('URL:', req.url);
+    console.log('Origin:', req.headers.origin);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('=======================');
+    next();
+  });
 
   // Remove global prefix as it might be causing issues
   // app.setGlobalPrefix('api');
