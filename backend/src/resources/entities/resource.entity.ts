@@ -83,7 +83,7 @@ export class Resource {
   @Column()
   projectId: string;
 
-  @ManyToOne(() => Environment, {
+  @ManyToOne(() => Environment, environment => environment.resources, {
     onDelete: 'CASCADE'
   })
   @JoinColumn({ name: 'environmentId' })

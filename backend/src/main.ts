@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DataSource } from 'typeorm';
 
 async function bootstrap() {
   console.log('Starting NestJS application...');
@@ -95,6 +96,10 @@ async function bootstrap() {
     console.log('=======================');
     next();
   });
+
+  // Add database readiness check
+  const dataSource = app.get(DataSource);
+  await dataSource.runMigrations();
 
   const port = configService.get('PORT') || 3000;
   console.log(`Starting server on port ${port}...`);

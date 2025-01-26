@@ -64,8 +64,8 @@ export class Server {
   status: 'online' | 'offline';
 
   @CreateDateColumn()
-  createdAt: string;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: string;
+  updatedAt: Date;
 } 
