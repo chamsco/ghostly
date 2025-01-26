@@ -38,9 +38,7 @@ export class Project {
   })
   resources: Resource[];
 
-  @OneToMany(() => Environment, environment => environment.project, {
-    cascade: true
-  })
+  @OneToMany(() => Environment, environment => environment.project)
   environments: Environment[];
 
   @Column('jsonb', { nullable: true })

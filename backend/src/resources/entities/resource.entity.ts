@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 import { Environment } from '../../projects/entities/environment.entity';
 import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../../projects/types/project.types';
@@ -77,12 +77,16 @@ export class Resource {
   @ManyToOne(() => Project, project => project.resources, {
     onDelete: 'CASCADE'
   })
+  @JoinColumn({ name: 'projectId' })
   project: Project;
 
   @Column()
   projectId: string;
 
-  @ManyToOne(() => Environment)
+  @ManyToOne(() => Environment, {
+    onDelete: 'CASCADE'
+  })
+  @JoinColumn({ name: 'environmentId' })
   environment: Environment;
 
   @Column()

@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Project } from './project.entity';
-import { Resource } from './resource.entity';
+import { Resource } from '../../resources/entities/resource.entity';
 import { EnvironmentVariable } from './environment-variable.entity';
 import { EnvironmentType } from '../types/project.types';
 
@@ -19,8 +19,14 @@ export class Environment {
   })
   type: EnvironmentType;
 
-  @ManyToOne(() => Project, project => project.environments)
+  @ManyToOne(() => Project, project => project.environments, {
+    onDelete: 'CASCADE'
+  })
+  @JoinColumn({ name: 'projectId' })
   project: Project;
+
+  @Column()
+  projectId: string;
 
   @OneToMany(() => Resource, resource => resource.environment)
   resources: Resource[];

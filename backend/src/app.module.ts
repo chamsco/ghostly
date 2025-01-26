@@ -11,6 +11,7 @@ import { User } from './users/entities/user.entity';
 import { Device } from './auth/entities/device.entity';
 import { Project } from './projects/entities/project.entity';
 import { Resource } from './resources/entities/resource.entity';
+import { Environment } from './projects/entities/environment.entity';
 import { SecurityMiddleware } from './middleware/security.middleware';
 import { MetricsModule } from './metrics/metrics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -29,7 +30,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
-        entities: [User, Device, Project, Resource],
+        entities: [User, Device, Project, Resource, Environment],
         synchronize: false,
         logging: configService.get('NODE_ENV') === 'development',
       }),
