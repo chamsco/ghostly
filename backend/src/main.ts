@@ -13,28 +13,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Configure CORS first
-  const allowedOrigins = ['http://168.119.111.140:3001', 'http://localhost:3001'];
-  console.log('Configuring CORS with allowed origins:', allowedOrigins);
-  
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log('Origin rejected:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Accept',
-      'Origin',
-      'X-Requested-With'
-    ],
-    exposedHeaders: ['Content-Range', 'X-Content-Range']
+    origin: 'http://168.119.111.140:3001',
+    credentials: true
   });
 
   app.use(cookieParser());
@@ -72,11 +53,10 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false, // Set to false for non-HTTPS
+        secure: false,
         maxAge: 1000 * 60 * 60 * 24,
         sameSite: 'lax',
-        path: '/',
-        domain: '168.119.111.140'
+        path: '/'
       },
     }),
   );
@@ -92,9 +72,6 @@ async function bootstrap() {
     console.log('=======================');
     next();
   });
-
-  // Remove global prefix as it might be causing issues
-  // app.setGlobalPrefix('api');
 
   const port = configService.get('PORT') || 3000;
   console.log(`Starting server on port ${port}...`);
