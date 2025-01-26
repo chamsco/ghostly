@@ -23,8 +23,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
   migrations: [
     InitialSchema1710000000000,
-    AddServerAndEnvironmentIds1710000000001,
     CreateResourcesTable1710000000002,
+    AddServerAndEnvironmentIds1710000000001,
     UpdateEnvironmentRelations1710000000003,
     CreateEnvironmentVariablesTable1710000000004
   ],
