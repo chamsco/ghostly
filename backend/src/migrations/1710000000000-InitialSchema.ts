@@ -22,6 +22,7 @@ export class InitialSchema1710000000000 implements MigrationInterface {
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "name" varchar(255) NOT NULL,
         "host" varchar(255) NOT NULL,
+        "port" int NOT NULL,
         "description" text NULL,
         "type" server_type NOT NULL DEFAULT 'remote',
         "createdAt" timestamp DEFAULT now(),
