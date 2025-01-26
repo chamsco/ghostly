@@ -27,7 +27,6 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     CreateResourcesTable1710000000002,
     UpdateEnvironmentRelations1710000000003,
     CreateEnvironmentVariablesTable1710000000004
-
   ],
   migrationsRun: true,
   migrationsTransactionMode: 'each',
