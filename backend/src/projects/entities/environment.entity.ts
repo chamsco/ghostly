@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Project } from './project.entity';
-import { Resource } from './resource.entity';
+import { Resource } from '../../resources/entities/resource.entity';
 import { EnvironmentVariable } from './environment-variable.entity';
 import { EnvironmentType } from '../types/project.types';
 
