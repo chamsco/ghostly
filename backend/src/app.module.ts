@@ -33,6 +33,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
         entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
+        migrations: ['dist/migrations/*.js'],
+        migrationsRun: true,
         synchronize: false,
         logging: configService.get('NODE_ENV') === 'development',
       }),

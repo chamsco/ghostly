@@ -7,6 +7,29 @@ export class InitialSchema1710000000000 implements MigrationInterface {
       CREATE TYPE server_type AS ENUM ('local', 'remote');
     `);
 
+    // Create users table
+    await queryRunner.query(`
+      CREATE TABLE "users" (
+        "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        "fullName" varchar(255) NOT NULL,
+        "username" varchar(255) NOT NULL UNIQUE,
+        "email" varchar(255) NOT NULL UNIQUE,
+        "password" varchar(255) NOT NULL,
+        "isVerified" boolean DEFAULT false,
+        "isAdmin" boolean DEFAULT false,
+        "twoFactorSecret" varchar(255),
+        "twoFactorEnabled" boolean DEFAULT false,
+        "isBiometricsEnabled" boolean DEFAULT false,
+        "biometricCredentialId" text,
+        "biometricChallenge" text,
+        "enabledAuthMethods" text[],
+        "requiresAdditionalAuth" boolean DEFAULT false,
+        "createdAt" timestamp DEFAULT now(),
+        "updatedAt" timestamp DEFAULT now()
+      );
+    `);
+
+    // Create servers table
     await queryRunner.query(`
       CREATE TABLE "servers" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -33,6 +56,7 @@ export class InitialSchema1710000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "servers";`);
+    await queryRunner.query(`DROP TABLE "users";`);
     await queryRunner.query(`DROP TYPE server_type;`);
   }
 }
