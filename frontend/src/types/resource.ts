@@ -1,8 +1,10 @@
-
 export enum ResourceType {
   DATABASE = 'database',
   SERVICE = 'service',
-  WEBSITE = 'website'
+  WEBSITE = 'website',
+  GITHUB = 'github',
+  GITLAB = 'gitlab',
+  BITBUCKET = 'bitbucket'
 }
 
 export enum DatabaseType {
@@ -25,19 +27,57 @@ export enum ResourceStatus {
   ERROR = 'error'
 }
 
+export enum ProjectStatus {
+  CREATED = 'created',
+  DEPLOYING = 'deploying',
+  RUNNING = 'running',
+  STOPPED = 'stopped',
+  FAILED = 'failed',
+  ERROR = 'error'
+}
+
 export interface Resource {
   id: string;
-  name: string;
-  type: string;
-  status: ResourceStatus;
-  config: Record<string, any>;
   projectId: string;
+  name: string;
+  type: ResourceType;
+  environment: Environment;
+  config: ResourceConfig;
+  status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
 }
 
+export type Environment = 'development' | 'staging' | 'production';
+export type DeploymentTarget = 'localhost' | 'kubernetes' | 'aws';
+
+export interface VCSConfig {
+  repositoryUrl: string;
+  branch: string;
+  target: DeploymentTarget;
+  port?: string;
+}
+
+export interface DatabaseConfig {
+  type: DatabaseType;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+}
+
+export interface ServiceConfig {
+  type: ServiceType;
+  command?: string;
+  env?: Record<string, string>;
+}
+
+export type ResourceConfig = VCSConfig | DatabaseConfig | ServiceConfig;
+
 export interface CreateResourceDto {
   name: string;
-  type: string;
-  config: Record<string, any>;
+  type: ResourceType;
+  environment: Environment;
+  config: ResourceConfig;
 } 

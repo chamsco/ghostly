@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Device } from '../../auth/entities/device.entity';
+import { Project } from '../../projects/entities/project.entity';
 
 export enum AuthMethod {
   PASSWORD = 'password',
@@ -63,6 +64,9 @@ export class User {
 
   @OneToMany(() => Device, device => device.user)
   devices: Device[];
+
+  @OneToMany(() => Project, project => project.owner)
+  projects: Project[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -23,7 +23,10 @@ export enum EnvironmentType {
 export enum ResourceType {
   DATABASE = 'database',
   SERVICE = 'service',
-  WEBSITE = 'website'
+  WEBSITE = 'website',
+  GITHUB = 'github',
+  GITLAB = 'gitlab',
+  BITBUCKET = 'bitbucket'
 }
 
 export enum DatabaseType {
@@ -48,7 +51,8 @@ export enum ProjectStatus {
   DEPLOYING = 'deploying',
   RUNNING = 'running',
   STOPPED = 'stopped',
-  FAILED = 'failed'
+  FAILED = 'failed',
+  ERROR = 'error'
 }
 
 export interface EnvironmentVariable {

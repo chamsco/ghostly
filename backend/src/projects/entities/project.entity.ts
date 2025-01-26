@@ -1,9 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ProjectStatus } from '../types/project.types';
-import { Resource } from './resource.entity';
+import { Resource } from '../../resources/entities/resource.entity';
 import { Environment } from './environment.entity';
+import { User } from '../../users/entities/user.entity';
 
-@Entity()
+@Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -11,7 +12,7 @@ export class Project {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ nullable: true })
   description: string;
 
   @Column({ nullable: true })
@@ -19,6 +20,10 @@ export class Project {
 
   @Column()
   ownerId: string;
+
+  @ManyToOne(() => User, user => user.projects)
+  @JoinColumn({ name: 'ownerId' })
+  owner: User;
 
   @Column({
     type: 'enum',
@@ -28,7 +33,8 @@ export class Project {
   status: ProjectStatus;
 
   @OneToMany(() => Resource, resource => resource.project, {
-    cascade: true
+    cascade: true,
+    onDelete: 'CASCADE'
   })
   resources: Resource[];
 
@@ -41,8 +47,8 @@ export class Project {
   environmentVariables?: { key: string; value: string; isSecret: boolean; }[];
 
   @CreateDateColumn()
-  createdAt: string;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt: string;
+  updatedAt: Date;
 } 
