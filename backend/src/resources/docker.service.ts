@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resource } from './entities/resource.entity';
-import Dockerode from 'dockerode';
+import * as Dockerode from 'dockerode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
