@@ -31,7 +31,7 @@ export class ProjectsService {
       return await this.projectsRepository.find({
         where: { ownerId: userId },
         order: { createdAt: 'DESC' },
-        relations: ['resources', 'environments']
+        relations: ['resources', 'environments', 'server']
       });
     } catch (error) {
       if (error.code === '42P01') {
