@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { ResourcesService } from '../services/resources.service';
-import { Resource } from '../entities/resource.entity';
+import { Resource } from '../../resources/entities/resource.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RequestWithUser } from '../../auth/interfaces/request-with-user.interface';
 

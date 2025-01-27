@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
 import { ProjectStatus, ProjectType } from './types/project.types';
-import { Resource } from './entities/resource.entity';
+import { Resource } from '../resources/entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CreateResourceDto } from './dto/create-resource.dto';

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { Project } from './entities/project.entity';
-import { Resource } from './entities/resource.entity';
+import { Resource } from '../resources/entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { EnvironmentVariable } from './entities/environment-variable.entity';
 import { EnvTemplate } from './entities/env-template.entity';
