@@ -4,7 +4,7 @@ import { Resource } from '../../resources/entities/resource.entity';
 import { EnvironmentVariable } from './environment-variable.entity';
 import { EnvironmentType } from '../types/project.types';
 
-@Entity()
+@Entity('environments')
 export class Environment {
   @PrimaryGeneratedColumn('uuid')
   id: string;

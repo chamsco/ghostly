@@ -23,6 +23,7 @@ import { CreateResourcesTable1710000000002 } from './migrations/1710000000002-Cr
 import { AddServerAndEnvironmentIds1710000000005 } from './migrations/1710000000005-AddServerAndEnvironmentIds';
 import { CreateEnvironmentsTable1710000000003 } from './migrations/1710000000003-CreateEnvironmentsTable';
 import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
+import { CleanupResourceEnums1710000000006 } from './migrations/1710000000006-CleanupResourceEnums';
 import { AddResourceIndexes1710000000007 } from './migrations/1710000000007-AddResourceIndexes';
 
 @Module({
@@ -47,6 +48,7 @@ import { AddResourceIndexes1710000000007 } from './migrations/1710000000007-AddR
           CreateEnvironmentsTable1710000000003,
           CreateEnvironmentVariablesTable1710000000004,
           AddServerAndEnvironmentIds1710000000005,
+          CleanupResourceEnums1710000000006,
           AddResourceIndexes1710000000007,
         ],
         migrationsRun: true,
