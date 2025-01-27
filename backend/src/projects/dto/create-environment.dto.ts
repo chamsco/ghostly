@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, ValidateNested, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { EnvironmentType } from '../types/project.types';
 import { EnvironmentVariableDto } from './environment-variable.dto';
@@ -13,5 +13,6 @@ export class CreateEnvironmentDto {
 
   @ValidateNested({ each: true })
   @Type(() => EnvironmentVariableDto)
-  variables: EnvironmentVariableDto[];
+  @IsOptional()
+  variables?: EnvironmentVariableDto[] = [];
 } 

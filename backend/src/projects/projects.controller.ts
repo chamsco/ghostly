@@ -24,10 +24,15 @@ export class ProjectsController {
   @Get()
   async getAllProjects(@Req() req: RequestWithUser): Promise<Project[]> {
     try {
-      return await this.projectsService.findAllByUser(req.user.id);
+      const projects = await this.projectsService.findAllByUser(req.user.id);
+      return projects || [];
     } catch (error) {
+      console.error('Failed to fetch projects:', error);
       if (error.code === '42P01') {
         throw new InternalServerErrorException('Database setup incomplete');
+      }
+      if (error instanceof InternalServerErrorException) {
+        throw error;
       }
       throw new InternalServerErrorException('Failed to fetch projects');
     }

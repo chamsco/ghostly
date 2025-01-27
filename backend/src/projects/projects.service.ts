@@ -27,11 +27,18 @@ export class ProjectsService {
 
   // Project methods
   async findAllByUser(userId: string): Promise<Project[]> {
-    return this.projectsRepository.find({
-      where: { ownerId: userId },
-      order: { createdAt: 'DESC' },
-      relations: ['resources', 'environments']
-    });
+    try {
+      return await this.projectsRepository.find({
+        where: { ownerId: userId },
+        order: { createdAt: 'DESC' },
+        relations: ['resources', 'environments']
+      });
+    } catch (error) {
+      if (error.code === '42P01') {
+        throw new InternalServerErrorException('Database setup incomplete');
+      }
+      throw new InternalServerErrorException('Failed to fetch projects');
+    }
   }
 
   async findOne(id: string): Promise<Project | null> {
@@ -57,24 +64,26 @@ export class ProjectsService {
 
       await queryRunner.manager.save(project);
 
-      // Create default environments
-      for (const envData of createProjectDto.environments) {
-        const environment = this.environmentsRepository.create({
-          ...envData,
-          project
-        });
+      // Create default environments if provided
+      if (createProjectDto.environments && createProjectDto.environments.length > 0) {
+        for (const envData of createProjectDto.environments) {
+          const environment = this.environmentsRepository.create({
+            ...envData,
+            project
+          });
 
-        await queryRunner.manager.save(environment);
+          await queryRunner.manager.save(environment);
 
-        // Create environment variables
-        if (envData.variables) {
-          for (const varData of envData.variables) {
-            const envVar = this.environmentVariablesRepository.create({
-              ...varData,
-              environment
-            });
+          // Create environment variables if provided
+          if (envData.variables && envData.variables.length > 0) {
+            for (const varData of envData.variables) {
+              const envVar = this.environmentVariablesRepository.create({
+                ...varData,
+                environment
+              });
 
-            await queryRunner.manager.save(envVar);
+              await queryRunner.manager.save(envVar);
+            }
           }
         }
       }
@@ -82,8 +91,15 @@ export class ProjectsService {
       await queryRunner.commitTransaction();
       return this.findOne(project.id);
     } catch (error) {
+      console.error('Failed to create project:', error);
       await queryRunner.rollbackTransaction();
-      throw error;
+      if (error.code === '42P01') {
+        throw new InternalServerErrorException('Database setup incomplete');
+      }
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create project');
     } finally {
       await queryRunner.release();
     }

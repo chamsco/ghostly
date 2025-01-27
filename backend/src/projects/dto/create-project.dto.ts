@@ -19,10 +19,12 @@ export class CreateProjectDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EnvironmentVariableDto)
-  globalVariables: EnvironmentVariableDto[];
+  @IsOptional()
+  globalVariables?: EnvironmentVariableDto[] = [];
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateEnvironmentDto)
-  environments: CreateEnvironmentDto[];
+  @IsOptional()
+  environments?: CreateEnvironmentDto[] = [];
 } 
