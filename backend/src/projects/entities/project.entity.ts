@@ -42,9 +42,6 @@ export class Project {
   @OneToMany(() => Environment, environment => environment.project)
   environments: Environment[];
 
-  @Column('jsonb', { nullable: true })
-  environmentVariables?: { key: string; value: string; isSecret: boolean; }[];
-
   @CreateDateColumn()
   createdAt: Date;
 

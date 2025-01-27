@@ -20,9 +20,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { InitialSchema1710000000000 } from './migrations/1710000000000-InitialSchema';
 import { CreateProjectsTable1710000000001 } from './migrations/1710000000001-CreateProjectsTable';
 import { CreateResourcesTable1710000000002 } from './migrations/1710000000002-CreateResourcesTable';
-import { AddServerAndEnvironmentIds1710000000003 } from './migrations/1710000000003-AddServerAndEnvironmentIds';
-import { CreateEnvironmentsTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentsTable';
-import { CreateEnvironmentVariablesTable1710000000005 } from './migrations/1710000000005-CreateEnvironmentVariablesTable';
+import { AddServerAndEnvironmentIds1710000000003 } from './migrations/1710000000005-AddServerAndEnvironmentIds';
+import { CreateEnvironmentsTable1710000000004 } from './migrations/1710000000003-CreateEnvironmentsTable';
+import { CreateEnvironmentVariablesTable1710000000005 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
 
 @Module({
   imports: [

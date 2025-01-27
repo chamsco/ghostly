@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner  } from "typeorm";
 
-export class CreateEnvironmentsTable1710000000004 implements MigrationInterface {
+export class CreateEnvironmentsTable1710000000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TYPE environment_type AS ENUM ('development', 'staging', 'production');
