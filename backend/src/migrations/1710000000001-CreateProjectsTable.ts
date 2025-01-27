@@ -10,8 +10,8 @@ export class CreateProjectsTable1710000000001 implements MigrationInterface {
         "serverId" uuid,
         "ownerId" uuid NOT NULL,
         "status" varchar(255) NOT NULL DEFAULT 'created',
-        "createdAt" timestamp DEFAULT now(),
-        "updatedAt" timestamp DEFAULT now(),
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now(),
         CONSTRAINT "fk_server" FOREIGN KEY ("serverId") REFERENCES "servers"("id") ON DELETE SET NULL,
         CONSTRAINT "fk_owner" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE CASCADE
       );

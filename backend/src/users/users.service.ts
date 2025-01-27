@@ -20,8 +20,8 @@ export class UsersService {
         'fullName',
         'isAdmin',
         'isVerified',
-        'createdAt',
-        'updatedAt'
+        'created_at',
+        'updated_at'
       ]
     });
   }
@@ -36,8 +36,8 @@ export class UsersService {
         'fullName',
         'isAdmin',
         'isVerified',
-        'createdAt',
-        'updatedAt'
+        'created_at',
+        'updated_at'
       ]
     });
   }

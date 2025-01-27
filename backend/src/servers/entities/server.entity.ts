@@ -4,7 +4,7 @@
  * Represents a server in the system that can host projects
  * Supports both local and remote servers with SSH configuration
  */
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, created_ateColumn, updated_ateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { ProjectType } from '../../projects/types/project.types';
 import { ServerType } from '../types/server.types';
@@ -63,9 +63,9 @@ export class Server {
   @Column({ default: 'offline' })
   status: 'online' | 'offline';
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @created_ateColumn({ name: 'created_at' })
+  created_at: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @updated_ateColumn({ name: 'updated_at' })
+  updated_at: Date;
 } 

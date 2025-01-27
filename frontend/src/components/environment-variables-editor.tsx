@@ -32,8 +32,8 @@ export function EnvironmentVariablesEditor({ value = [], onChange }: Props) {
       key: '',
       value: '',
       isSecret: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     onChange([...value, newVariable]);
   };
@@ -53,15 +53,15 @@ export function EnvironmentVariablesEditor({ value = [], onChange }: Props) {
         key: updatedVariables[index].key || '',
         value: updatedVariables[index].value || '',
         isSecret: updatedVariables[index].isSecret || false,
-        createdAt: now,
-        updatedAt: now
+        created_at: now,
+        updated_at: now
       };
     }
     
     updatedVariables[index] = {
       ...updatedVariables[index],
       [field]: newValue,
-      updatedAt: now,
+      updated_at: now,
       isSecret: field === 'key' ? isSecretKey(newValue) : updatedVariables[index].isSecret
     };
     

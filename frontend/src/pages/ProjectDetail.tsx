@@ -38,8 +38,8 @@ const parseEnvFile = (content: string): EnvironmentVariable[] => {
       key: key.trim(),
       value: value.trim(),
       isSecret: key.trim().toLowerCase().includes('secret') || key.trim().toLowerCase().includes('password'),
-      createdAt: now,
-      updatedAt: now
+      created_at: now,
+      updated_at: now
     });
   });
   
@@ -260,7 +260,7 @@ export default function ProjectDetail() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Created</p>
               <p className="text-2xl font-bold">
-                {new Date(project.createdAt).toLocaleDateString()}
+                {new Date(project.created_at).toLocaleDateString()}
               </p>
             </div>
           </div>

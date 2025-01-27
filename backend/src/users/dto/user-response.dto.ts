@@ -6,5 +6,5 @@ export class UserResponseDto {
   isAdmin: boolean;
   status: 'active' | 'inactive';
   lastActive?: Date;
-  createdAt?: Date;
+  created_at?: Date;
 } 

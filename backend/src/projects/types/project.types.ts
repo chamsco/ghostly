@@ -59,8 +59,8 @@ export interface Environment {
   name: string;
   variables: EnvironmentVariable[];
   projectId: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Resource {
@@ -85,8 +85,8 @@ export interface Resource {
   // Website specific fields
   branch?: string;
   projectId: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Project {
@@ -99,6 +99,6 @@ export interface Project {
   environments: Environment[];
   resources: Resource[];
   environmentVariables?: EnvironmentVariable[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 } 

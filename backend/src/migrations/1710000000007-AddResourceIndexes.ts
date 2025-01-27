@@ -50,10 +50,10 @@ export class AddResourceIndexes1710000000007 implements MigrationInterface {
       -- Project indexes
       CREATE INDEX IF NOT EXISTS "IDX_projects_owner_status" 
       ON "projects" ("ownerId", "status")
-      INCLUDE ("name", "createdAt");
+      INCLUDE ("name", "created_at");
 
       CREATE INDEX IF NOT EXISTS "IDX_projects_owner_recent"
-      ON "projects" ("ownerId", "createdAt" DESC)
+      ON "projects" ("ownerId", "created_at" DESC)
       INCLUDE ("name", "status")
       WHERE "status" != 'deleted';
 

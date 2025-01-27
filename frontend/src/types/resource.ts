@@ -44,8 +44,8 @@ export interface Resource {
   environment: Environment;
   config: ResourceConfig;
   status: ProjectStatus;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type Environment = 'development' | 'staging' | 'production';

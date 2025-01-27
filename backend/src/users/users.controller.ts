@@ -29,8 +29,8 @@ export class UsersController {
         fullName: user.fullName,
         isAdmin: user.isAdmin,
         status: user.isVerified ? 'active' : 'inactive',
-        lastActive: user.updatedAt,
-        createdAt: user.createdAt
+        lastActive: user.updated_at,
+        created_at: user.created_at
       }));
     } catch (error) {
       if (error.code === '42P01') {
@@ -58,7 +58,7 @@ export class UsersController {
         fullName: user.fullName,
         isAdmin: user.isAdmin,
         status: user.isVerified ? 'active' : 'inactive',
-        createdAt: user.createdAt
+        created_at: user.created_at
       };
     } catch (error) {
       if (error instanceof ConflictException) {
@@ -93,7 +93,7 @@ export class UsersController {
         fullName: user.fullName,
         isAdmin: user.isAdmin,
         status: user.isVerified ? 'active' : 'inactive',
-        lastActive: user.updatedAt
+        lastActive: user.updated_at
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {

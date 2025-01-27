@@ -24,8 +24,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   database: process.env.DB_DATABASE || 'squadron',
   entities: [User, Device, Project, Resource, Environment, EnvironmentVariable, Server],
   migrations: [
-    CreateProjectsTable1710000000001,
     InitialSchema1710000000000,
+    CreateProjectsTable1710000000001,
     CreateResourcesTable1710000000002,
     CreateEnvironmentsTable1710000000003,
     CreateEnvironmentVariablesTable1710000000004,
@@ -34,8 +34,8 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     AddResourceIndexes1710000000007,
   ],
   migrationsRun: true,
-  migrationsTransactionMode: 'each',
+  migrationsTransactionMode: 'all',
   synchronize: false,
-  logging: true,
-  dropSchema: false, // Don't drop existing tables
+  logging: ['error', 'warn', 'migration'],
+  dropSchema: process.env.NODE_ENV !== 'production',
 }; 

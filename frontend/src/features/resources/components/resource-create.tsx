@@ -20,8 +20,8 @@ const formSchema = z.object({
     key: z.string(),
     value: z.string(),
     isSecret: z.boolean(),
-    createdAt: z.string(),
-    updatedAt: z.string()
+    created_at: z.string(),
+    updated_at: z.string()
   })).default([])
 });
 

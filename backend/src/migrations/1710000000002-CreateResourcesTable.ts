@@ -45,8 +45,8 @@ export class CreateResourcesTable1710000000002 implements MigrationInterface {
         "environment" environment_enum NOT NULL,
         "config" jsonb NOT NULL,
         "projectId" uuid NOT NULL,
-        "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
-        "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
+        "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+        "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "FK_resources_project" FOREIGN KEY ("projectId")
           REFERENCES "projects"("id") ON DELETE CASCADE,
         CONSTRAINT "UQ_resource_name_project" UNIQUE ("name", "projectId")

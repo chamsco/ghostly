@@ -28,16 +28,33 @@ export class ProjectsService {
   // Project methods
   async findAllByUser(userId: string): Promise<Project[]> {
     try {
-      return await this.projectsRepository.find({
+      console.log('Attempting to fetch projects for user:', userId);
+      const projects = await this.projectsRepository.find({
         where: { ownerId: userId },
-        order: { createdAt: 'DESC' },
-        relations: ['resources', 'environments', 'server']
+        order: { created_at: 'DESC' },
+        relations: ['resources', 'environments']
       });
+      console.log('Successfully fetched projects:', projects?.length || 0);
+      return projects;
     } catch (error) {
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        detail: error.detail,
+        table: error.table,
+        constraint: error.constraint
+      });
+      
       if (error.code === '42P01') {
-        throw new InternalServerErrorException('Database setup incomplete');
+        throw new InternalServerErrorException('Database setup incomplete - table does not exist. Try restarting the application.');
       }
-      throw new InternalServerErrorException('Failed to fetch projects');
+      if (error.code === '42804') {
+        throw new InternalServerErrorException('Data type mismatch in database. Check enum values.');
+      }
+      if (error.code === '42703') {
+        throw new InternalServerErrorException('Column does not exist in table. Check migration files.');
+      }
+      throw new InternalServerErrorException(`Failed to fetch projects: ${error.message}`);
     }
   }
 

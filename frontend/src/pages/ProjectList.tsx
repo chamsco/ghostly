@@ -76,7 +76,7 @@ export function ProjectList() {
                 {project.environments.length} Environment{project.environments.length !== 1 ? 's' : ''}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                Created on {new Date(project.createdAt).toLocaleDateString()}
+                Created on {new Date(project.created_at).toLocaleDateString()}
               </span>
             </div>
           </Card>

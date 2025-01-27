@@ -127,7 +127,7 @@ export function ProjectSettings() {
             <div className="grid gap-2">
               <Label>Created On</Label>
               <p className="text-sm text-muted-foreground">
-                {new Date(project.createdAt).toLocaleDateString()}
+                {new Date(project.created_at).toLocaleDateString()}
               </p>
             </div>
 

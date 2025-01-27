@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, created_ateColumn, updated_ateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Project } from './project.entity';
 import { Resource } from '../../resources/entities/resource.entity';
 import { EnvironmentVariable } from './environment-variable.entity';
@@ -30,9 +30,9 @@ export class Environment {
   })
   variables: EnvironmentVariable[];
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @created_ateColumn({ name: 'created_at' })
+  created_at: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @updated_ateColumn({ name: 'updated_at' })
+  updated_at: Date;
 } 

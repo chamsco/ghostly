@@ -24,8 +24,8 @@ export class InitialSchema1710000000000 implements MigrationInterface {
         "biometricChallenge" varchar(255),
         "enabledAuthMethods" auth_method[] DEFAULT '{password}',
         "requiresAdditionalAuth" boolean NOT NULL DEFAULT false,
-        "createdAt" timestamp DEFAULT now(),
-        "updatedAt" timestamp DEFAULT now()
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now()
       );
     `);
 
@@ -53,8 +53,8 @@ export class InitialSchema1710000000000 implements MigrationInterface {
         "labels" jsonb,
         "supportedTypes" text[] DEFAULT '{}',
         "status" varchar(255) NOT NULL DEFAULT 'offline',
-        "createdAt" timestamp DEFAULT now(),
-        "updatedAt" timestamp DEFAULT now()
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now()
       );
     `);
   }

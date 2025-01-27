@@ -16,8 +16,8 @@ export interface Server {
   isBuildServer: boolean;
   isSwarmManager: boolean;
   isSwarmWorker: boolean;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateServerDto {

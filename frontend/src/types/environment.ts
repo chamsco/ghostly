@@ -5,8 +5,8 @@ export interface EnvironmentVariable {
   key: string;
   value: string;
   isSecret: boolean;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Environment {
@@ -16,8 +16,8 @@ export interface Environment {
   projectId: string;
   resources: Resource[];
   variables: EnvironmentVariable[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateEnvironmentDto {

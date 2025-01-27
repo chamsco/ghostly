@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, created_ateColumn, updated_ateColumn, ManyToOne } from 'typeorm';
 import { Project } from './project.entity';
 import { Environment } from './environment.entity';
 import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../types/project.types';
@@ -88,9 +88,9 @@ export class Resource {
   @Column()
   environmentId: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @created_ateColumn()
+  created_at: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @updated_ateColumn()
+  updated_at: Date;
 } 

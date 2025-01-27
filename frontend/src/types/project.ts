@@ -65,8 +65,8 @@ export interface Resource {
   dockerImageUrl?: string;
   // Website specific fields
   branch?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Environment {
@@ -76,8 +76,8 @@ export interface Environment {
   projectId: string;
   resources: Resource[];
   variables: EnvironmentVariable[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Project {
@@ -90,8 +90,8 @@ export interface Project {
   resources: Resource[];
   environments: Environment[];
   environmentVariables?: EnvironmentVariable[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EnvironmentVariableDto {

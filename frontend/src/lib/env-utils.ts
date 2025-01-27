@@ -32,8 +32,8 @@ export const parseEnvFile = (content: string): EnvironmentVariable[] => {
       key: key.trim(),
       value: value.trim(),
       isSecret: isSecretKey(key.trim()),
-      createdAt: now,
-      updatedAt: now
+      created_at: now,
+      updated_at: now
     });
   });
   
