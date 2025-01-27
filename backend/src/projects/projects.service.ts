@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, InternalServerErr
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
-import { Resource } from './entities/resource.entity';
+import { Resource } from '../resources/entities/resource.entity';
 import { Environment } from './entities/environment.entity';
 import { CreateResourceDto } from './dto/create-resource.dto';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';

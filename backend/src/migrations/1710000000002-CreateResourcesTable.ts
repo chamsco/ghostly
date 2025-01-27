@@ -41,6 +41,7 @@ export class CreateResourcesTable1710000000002 implements MigrationInterface {
         "name" varchar NOT NULL,
         "type" resource_type_enum NOT NULL,
         "status" resource_status_enum NOT NULL DEFAULT 'pending',
+        "error" varchar NULL,
         "containerId" varchar NULL,
         "environment" environment_enum NOT NULL,
         "config" jsonb NOT NULL,

@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { Device } from '../auth/entities/device.entity';
 import { Project } from '../projects/entities/project.entity';
-import { Resource } from '../projects/entities/resource.entity';
+import { Resource } from '../resources/entities/resource.entity';
 import { Environment } from '../projects/entities/environment.entity';
 import { EnvironmentVariable } from '../projects/entities/environment-variable.entity';
 import { Server } from '../servers/entities/server.entity';
