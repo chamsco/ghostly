@@ -59,7 +59,7 @@ export class CreateResourcesTable1710000000002 implements MigrationInterface {
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "name" varchar NOT NULL,
         "type" resource_type_enum NOT NULL,
-        "serverId" varchar NOT NULL,
+        "serverId" uuid NOT NULL,
         "status" resource_status_enum NOT NULL DEFAULT 'pending',
         "error" varchar NULL,
         "environmentVariables" jsonb NULL,
@@ -82,6 +82,8 @@ export class CreateResourcesTable1710000000002 implements MigrationInterface {
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "FK_resources_project" FOREIGN KEY ("projectId")
           REFERENCES "projects"("id") ON DELETE CASCADE,
+        CONSTRAINT "FK_resources_server" FOREIGN KEY ("serverId")
+          REFERENCES "servers"("id") ON DELETE CASCADE,
         CONSTRAINT "UQ_resource_name_project" UNIQUE ("name", "projectId")
       )
     `);

@@ -2,18 +2,11 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddServerAndEnvironmentIds1710000000005 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      ALTER TABLE "resources"
-      ADD COLUMN "serverId" uuid NULL,
-      ADD COLUMN "environmentId" uuid NULL
-    `);
+    // These columns are now added in the CreateResourcesTable migration
+    // No need to add them here
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      ALTER TABLE "resources"
-      DROP COLUMN "serverId",
-      DROP COLUMN "environmentId"
-    `);
+    // No changes to revert
   }
 } 
