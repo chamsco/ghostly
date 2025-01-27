@@ -54,6 +54,7 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
 
   const fetchProject = async () => {
     if (!id) return;
@@ -287,14 +288,28 @@ export default function ProjectDetail() {
               <p className="text-sm text-muted-foreground mb-4">
                 Create your first environment and add resources to it
               </p>
-              <ResourceWizard
-                projectId={project.id}
-                onSuccess={() => {
-                  // Refresh project data
-                  fetchProject();
+              <Button 
+                onClick={() => {
+                  console.log('Opening Resource Wizard');
+                  setShowWizard(true);
                 }}
-                onCancel={() => {}}
-              />
+              >
+                Add your first resource
+              </Button>
+              {showWizard && (
+                <ResourceWizard
+                  projectId={project.id}
+                  onSuccess={() => {
+                    console.log('Resource Wizard completed successfully');
+                    setShowWizard(false);
+                    fetchProject();
+                  }}
+                  onCancel={() => {
+                    console.log('Resource Wizard cancelled');
+                    setShowWizard(false);
+                  }}
+                />
+              )}
             </div>
           ) : (
             <Tabs
