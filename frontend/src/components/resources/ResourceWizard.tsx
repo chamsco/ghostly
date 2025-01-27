@@ -21,39 +21,44 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { resourcesApi } from '@/services/resources-api';
-import {
-  ResourceType,
-  VCSConfig
-} from '@/types/resource';
+import { projectsApi } from '@/services/api.service';
+import { EnvironmentType, ServiceType } from '@/types/project';
+//import { ResourceType } from '@/types/project';
+import { EnvironmentVariablesEditor } from '@/components/environment-variables-editor';
+import { Progress } from '@/components/ui/progress';
+//import { Separator } from '@/components/ui/separator';
 
 // Validation schemas for each step
 const environmentSchema = z.object({
-  environment: z.enum(['development', 'staging', 'production'] as const),
+  name: z.string().min(3, 'Environment name must be at least 3 characters'),
+  type: z.nativeEnum(EnvironmentType),
+  variables: z.array(z.object({
+    id: z.string(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean(),
+    created_at: z.string(),
+    updated_at: z.string()
+  })).default([])
 });
 
-const resourceTypeSchema = z.object({
-  resourceType: z.nativeEnum(ResourceType),
-});
-
-const githubConfigSchema = z.object({
-  repositoryUrl: z.string()
-    .url('Please enter a valid URL')
-    .regex(/^https:\/\/github\.com\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+(\/)?$/, 'Please enter a valid GitHub repository URL'),
-  branch: z.string().min(1, 'Branch name is required'),
-});
-
-const deploymentTargetSchema = z.object({
-  target: z.enum(['localhost', 'kubernetes', 'aws'] as const),
-  port: z.string().regex(/^\d+$/, 'Port must be a number').optional(),
+const resourceSchema = z.object({
+  name: z.string().min(3, 'Resource name must be at least 3 characters'),
+  type: z.nativeEnum(ServiceType),
+  environmentVariables: z.array(z.object({
+    id: z.string(),
+    key: z.string(),
+    value: z.string(),
+    isSecret: z.boolean(),
+    created_at: z.string(),
+    updated_at: z.string()
+  })).default([])
 });
 
 // Combined schema for the entire form
 const formSchema = z.object({
-  ...environmentSchema.shape,
-  ...resourceTypeSchema.shape,
-  ...githubConfigSchema.shape,
-  ...deploymentTargetSchema.shape,
+  environment: environmentSchema,
+  resource: resourceSchema
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -67,56 +72,78 @@ interface ResourceWizardProps {
 export function ResourceWizard({ projectId, onSuccess, onCancel }: ResourceWizardProps) {
   const [step, setStep] = useState(1);
   const { toast } = useToast();
-  
+  const [isLoading, setIsLoading] = useState(false);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      environment: 'development',
-      resourceType: ResourceType.GITHUB,
-      repositoryUrl: '',
-      branch: 'main',
-      target: 'localhost',
-      port: '3000'
-    },
+      environment: {
+        name: '',
+        type: EnvironmentType.DEV,
+        variables: []
+      },
+      resource: {
+        name: '',
+        type: ServiceType.NODEJS,
+        environmentVariables: []
+      }
+    }
   });
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Create a properly typed VCSConfig
-      const config: VCSConfig = {
-        repositoryUrl: data.repositoryUrl,
-        branch: data.branch,
-        target: data.target,
-        ...(data.target === 'localhost' && { port: data.port })
-      };
+      setIsLoading(true);
 
-      await resourcesApi.create(projectId, {
-        name: `${data.resourceType.toLowerCase()}-${data.environment}`,
-        type: data.resourceType,
-        environment: data.environment,
-        config
+      // Step 1: Create environment
+      const environment = await projectsApi.createEnvironment(projectId, {
+        name: data.environment.name,
+        type: data.environment.type,
+        variables: data.environment.variables
       });
-      
+
+      if (!environment) {
+        throw new Error('Failed to create environment');
+      }
+
+      // Step 2: Create resource
+      const resource = await projectsApi.createResource(projectId, {
+        name: data.resource.name,
+        type: data.resource.type,
+        environmentId: environment.id,
+        serverId: projectId,
+        environmentVariables: data.resource.environmentVariables
+      });
+
+      if (!resource) {
+        throw new Error('Failed to create resource');
+      }
+
       toast({
         title: 'Success',
-        description: 'Resource created successfully',
+        description: 'Environment and resource created successfully'
       });
-      
+
       onSuccess();
     } catch (error) {
-      console.error('Failed to create resource:', error);
+      console.error('Wizard error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to create resource. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to complete setup'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const nextStep = async () => {
-    const isValid = await form.trigger();
+    const fields = step === 1 
+      ? ['environment.name', 'environment.type']
+      : ['resource.name', 'resource.type'];
+
+    const isValid = await form.trigger(fields as any);
     if (isValid) {
-      setStep((s) => Math.min(s + 1, 4));
+      setStep((s) => Math.min(s + 1, 2));
     }
   };
 
@@ -124,87 +151,73 @@ export function ResourceWizard({ projectId, onSuccess, onCancel }: ResourceWizar
 
   return (
     <Card className="p-6 w-full max-w-2xl mx-auto">
+      <div className="mb-8">
+        <Progress value={step === 1 ? 50 : 100} className="h-2" />
+        <div className="mt-2 text-sm text-muted-foreground">
+          Step {step} of 2: {step === 1 ? 'Environment Setup' : 'Resource Setup'}
+        </div>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {step === 1 && (
-            <FormField
-              control={form.control}
-              name="environment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Environment</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select environment" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="development">Development</SelectItem>
-                      <SelectItem value="staging">Staging</SelectItem>
-                      <SelectItem value="production">Production</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold">Environment Setup</h2>
+                <p className="text-sm text-muted-foreground">
+                  Create an environment to organize your resources
+                </p>
+              </div>
 
-          {step === 2 && (
-            <FormField
-              control={form.control}
-              name="resourceType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Resource Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select resource type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={ResourceType.GITHUB}>GitHub</SelectItem>
-                      <SelectItem value={ResourceType.GITLAB} disabled>GitLab (Coming Soon)</SelectItem>
-                      <SelectItem value={ResourceType.BITBUCKET} disabled>Bitbucket (Coming Soon)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
               <FormField
                 control={form.control}
-                name="repositoryUrl"
+                name="environment.name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>GitHub Repository URL</FormLabel>
+                    <FormLabel>Environment Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://github.com/user/repo" {...field} />
+                      <Input placeholder="e.g., Production" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="branch"
+                name="environment.type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Branch</FormLabel>
+                    <FormLabel>Environment Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select environment type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={EnvironmentType.DEV}>Development</SelectItem>
+                        <SelectItem value={EnvironmentType.STAGING}>Staging</SelectItem>
+                        <SelectItem value={EnvironmentType.PROD}>Production</SelectItem>
+                        <SelectItem value={EnvironmentType.TEST}>Test</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="environment.variables"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Environment Variables</FormLabel>
                     <FormControl>
-                      <Input placeholder="main" {...field} />
+                      <EnvironmentVariablesEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -213,48 +226,72 @@ export function ResourceWizard({ projectId, onSuccess, onCancel }: ResourceWizar
             </div>
           )}
 
-          {step === 4 && (
-            <div className="space-y-4">
+          {step === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold">Resource Setup</h2>
+                <p className="text-sm text-muted-foreground">
+                  Add your first resource to the environment
+                </p>
+              </div>
+
               <FormField
                 control={form.control}
-                name="target"
+                name="resource.name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Deployment Target</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <FormLabel>Resource Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Backend API" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="resource.type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Resource Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select deployment target" />
+                          <SelectValue placeholder="Select resource type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="localhost">Localhost</SelectItem>
-                        <SelectItem value="kubernetes" disabled>Kubernetes (Coming Soon)</SelectItem>
-                        <SelectItem value="aws" disabled>AWS (Coming Soon)</SelectItem>
+                        <SelectItem value={ServiceType.NODEJS}>Node.js</SelectItem>
+                        <SelectItem value={ServiceType.PYTHON}>Python</SelectItem>
+                        <SelectItem value={ServiceType.PHP}>PHP</SelectItem>
+                        <SelectItem value={ServiceType.CUSTOM_DOCKER}>Docker</SelectItem>
+                        <SelectItem value={ServiceType.SUPABASE}>Supabase</SelectItem>
+                        <SelectItem value={ServiceType.POCKETBASE}>PocketBase</SelectItem>
+                        <SelectItem value={ServiceType.APPWRITE}>AppWrite</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {form.watch('target') === 'localhost' && (
-                <FormField
-                  control={form.control}
-                  name="port"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Port</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="3000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+
+              <FormField
+                control={form.control}
+                name="resource.environmentVariables"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Resource Environment Variables</FormLabel>
+                    <FormControl>
+                      <EnvironmentVariablesEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           )}
 
@@ -266,11 +303,13 @@ export function ResourceWizard({ projectId, onSuccess, onCancel }: ResourceWizar
             >
               {step === 1 ? 'Cancel' : 'Back'}
             </Button>
+            
             <Button
-              type={step === 4 ? 'submit' : 'button'}
-              onClick={step === 4 ? undefined : nextStep}
+              type={step === 2 ? 'submit' : 'button'}
+              onClick={step === 1 ? nextStep : undefined}
+              disabled={isLoading}
             >
-              {step === 4 ? 'Create Resource' : 'Next'}
+              {step === 1 ? 'Next' : 'Create'}
             </Button>
           </div>
         </form>

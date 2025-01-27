@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { generateUUID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Settings, Upload } from 'lucide-react';
+import { ResourceWizard } from '@/components/resources/ResourceWizard';
 
 // Utility function for parsing .env files
 const parseEnvFile = (content: string): EnvironmentVariable[] => {
@@ -54,37 +55,37 @@ export default function ProjectDetail() {
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProject = async () => {
-      if (!id) return;
-      
-      try {
-        setIsLoading(true);
-        const data = await projectsApi.findOne(id);
-        // Initialize empty arrays if they don't exist
-        const projectWithDefaults = {
-          ...data,
-          environments: data.environments || [],
-          resources: data.resources || []
-        };
-        setProject(projectWithDefaults);
-        if (projectWithDefaults.environments.length > 0) {
-          setSelectedEnvironment(projectWithDefaults.environments[0]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch project:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to fetch project details"
-        });
-      } finally {
-        setIsLoading(false);
+  const fetchProject = async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      const data = await projectsApi.findOne(id);
+      // Initialize empty arrays if they don't exist
+      const projectWithDefaults = {
+        ...data,
+        environments: data.environments || [],
+        resources: data.resources || []
+      };
+      setProject(projectWithDefaults);
+      if (projectWithDefaults.environments.length > 0) {
+        setSelectedEnvironment(projectWithDefaults.environments[0]);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch project:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch project details"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProject();
-  }, [id, toast]);
+  }, [id]);
 
   const handleEnvironmentSelect = (envId: string) => {
     const env = project?.environments.find(e => e.id === envId);
@@ -280,159 +281,176 @@ export default function ProjectDetail() {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs
-            value={selectedEnvironment?.id}
-            onValueChange={handleEnvironmentSelect}
-            className="space-y-4"
-          >
-            <TabsList className="w-full justify-start">
-              {project.environments.map(env => (
-                <TabsTrigger key={env.id} value={env.id} className="flex items-center gap-2">
-                  {env.name}
-                  <Badge variant="secondary" className="ml-2">
-                    {env.resources?.length || 0} Resources
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+          {project.environments.length === 0 ? (
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-2">No environments yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create your first environment and add resources to it
+              </p>
+              <ResourceWizard
+                projectId={project.id}
+                onSuccess={() => {
+                  // Refresh project data
+                  fetchProject();
+                }}
+                onCancel={() => {}}
+              />
+            </div>
+          ) : (
+            <Tabs
+              value={selectedEnvironment?.id}
+              onValueChange={handleEnvironmentSelect}
+              className="space-y-4"
+            >
+              <TabsList className="w-full justify-start">
+                {project.environments.map(env => (
+                  <TabsTrigger key={env.id} value={env.id} className="flex items-center gap-2">
+                    {env.name}
+                    <Badge variant="secondary" className="ml-2">
+                      {env.resources?.length || 0} Resources
+                    </Badge>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-            {project.environments.map(env => {
-              // Ensure resources is initialized
-              const resources = env.resources || [];
-              return (
-                <TabsContent key={env.id} value={env.id} className="space-y-6">
-                  {/* Environment Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-medium">{env.name}</h3>
-                      <p className="text-sm text-muted-foreground">Type: {env.type}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Input
-                          type="file"
-                          accept=".env"
-                          className="hidden"
-                          id={`env-file-${env.id}`}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(file);
-                          }}
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById(`env-file-${env.id}`)?.click()}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Import .env
-                        </Button>
+              {project.environments.map(env => {
+                // Ensure resources is initialized
+                const resources = env.resources || [];
+                return (
+                  <TabsContent key={env.id} value={env.id} className="space-y-6">
+                    {/* Environment Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-medium">{env.name}</h3>
+                        <p className="text-sm text-muted-foreground">Type: {env.type}</p>
                       </div>
-                      <ResourceCreate
-                        projectId={project.id}
-                        environmentId={env.id}
-                        serverId={project.serverId}
-                        onResourceCreated={handleResourceCreated}
-                        variant="outline"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Resource
-                      </ResourceCreate>
-                    </div>
-                  </div>
-
-                  {/* Environment Variables Section */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Environment Variables</CardTitle>
-                      <CardDescription>
-                        Configure environment-specific variables
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <EnvironmentVariablesEditor
-                        value={env.variables}
-                        onChange={handleVariablesChange}
-                      />
-                    </CardContent>
-                  </Card>
-
-                  {/* Resources Section */}
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle>Resources</CardTitle>
-                          <CardDescription>
-                            Manage environment-specific resources
-                          </CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {resources.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-sm text-muted-foreground">No resources yet</p>
-                          <ResourceCreate
-                            projectId={project.id}
-                            environmentId={env.id}
-                            serverId={project.serverId}
-                            onResourceCreated={handleResourceCreated}
-                            className="mt-4"
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <Input
+                            type="file"
+                            accept=".env"
+                            className="hidden"
+                            id={`env-file-${env.id}`}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file);
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={() => document.getElementById(`env-file-${env.id}`)?.click()}
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add your first resource
-                          </ResourceCreate>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Import .env
+                          </Button>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {resources.map(resource => (
-                            <Card key={resource.id}>
-                              <CardHeader>
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <CardTitle>{resource.name}</CardTitle>
-                                    <CardDescription>Type: {resource.type}</CardDescription>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => navigate(`/projects/${project.id}/resources/${resource.id}`)}
-                                  >
-                                    <Settings className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">Status</span>
-                                    <Badge>{resource.status}</Badge>
-                                  </div>
-                                  {resource.url && (
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-sm font-medium">URL</span>
-                                      <a
-                                        href={resource.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm text-blue-500 hover:underline"
-                                      >
-                                        {resource.url}
-                                      </a>
+                        <ResourceCreate
+                          projectId={project.id}
+                          environmentId={env.id}
+                          serverId={project.serverId}
+                          onResourceCreated={handleResourceCreated}
+                          variant="outline"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Resource
+                        </ResourceCreate>
+                      </div>
+                    </div>
+
+                    {/* Environment Variables Section */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Environment Variables</CardTitle>
+                        <CardDescription>
+                          Configure environment-specific variables
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <EnvironmentVariablesEditor
+                          value={env.variables}
+                          onChange={handleVariablesChange}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {/* Resources Section */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Resources</CardTitle>
+                            <CardDescription>
+                              Manage environment-specific resources
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {resources.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-sm text-muted-foreground">No resources yet</p>
+                            <ResourceCreate
+                              projectId={project.id}
+                              environmentId={env.id}
+                              serverId={project.serverId}
+                              onResourceCreated={handleResourceCreated}
+                              className="mt-4"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add your first resource
+                            </ResourceCreate>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {resources.map(resource => (
+                              <Card key={resource.id}>
+                                <CardHeader>
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <CardTitle>{resource.name}</CardTitle>
+                                      <CardDescription>Type: {resource.type}</CardDescription>
                                     </div>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => navigate(`/projects/${project.id}/resources/${resource.id}`)}
+                                    >
+                                      <Settings className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm font-medium">Status</span>
+                                      <Badge>{resource.status}</Badge>
+                                    </div>
+                                    {resource.url && (
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium">URL</span>
+                                        <a
+                                          href={resource.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-blue-500 hover:underline"
+                                        >
+                                          {resource.url}
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
