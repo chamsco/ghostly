@@ -44,6 +44,7 @@ export class CreateResourcesTable1710000000002 implements MigrationInterface {
         "error" varchar NULL,
         "containerId" varchar NULL,
         "environment" environment_enum NOT NULL,
+        "environmentVariables" jsonb NULL,
         "config" jsonb NOT NULL,
         "projectId" uuid NOT NULL,
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
