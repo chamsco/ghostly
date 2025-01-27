@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Project } from './project.entity';
 import { Resource } from '../../resources/entities/resource.entity';
 import { EnvironmentVariable } from './environment-variable.entity';
@@ -19,6 +19,7 @@ export class Environment {
   type: EnvironmentType;
 
   @ManyToOne(() => Project, project => project.environments)
+  @JoinColumn({ name: 'project_id' })
   project: Project;
 
   @OneToMany(() => Resource, resource => resource.environment)

@@ -40,6 +40,7 @@ export class Project {
   resources: Resource[];
 
   @OneToMany(() => Environment, environment => environment.project)
+  @JoinColumn({ name: 'project_id' })
   environments: Environment[];
 
   @CreateDateColumn()
