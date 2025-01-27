@@ -43,9 +43,9 @@ export class Project {
   @JoinColumn({ name: 'project_id' })
   environments: Environment[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 } 
