@@ -3,7 +3,7 @@ import { Project } from '../../projects/entities/project.entity';
 import { Environment } from '../../projects/entities/environment.entity';
 import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../../projects/types/project.types';
 
-@Entity()
+@Entity('resources')
 export class Resource {
   @PrimaryGeneratedColumn('uuid')
   id: string;

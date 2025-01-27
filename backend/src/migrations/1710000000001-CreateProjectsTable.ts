@@ -6,14 +6,19 @@ export class CreateProjectsTable1710000000001 implements MigrationInterface {
       CREATE TABLE "projects" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "name" varchar(255) NOT NULL,
-        "ownerId" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "description" text,
+        "serverId" uuid,
+        "ownerId" uuid NOT NULL,
+        "status" varchar(255) NOT NULL DEFAULT 'created',
         "createdAt" timestamp DEFAULT now(),
-        "updatedAt" timestamp DEFAULT now()
+        "updatedAt" timestamp DEFAULT now(),
+        CONSTRAINT "fk_server" FOREIGN KEY ("serverId") REFERENCES "servers"("id") ON DELETE SET NULL,
+        CONSTRAINT "fk_owner" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE CASCADE
       );
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "projects"`);
+    await queryRunner.query(`DROP TABLE "projects";`);
   }
 } 
