@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, created_ateColumn, updated_ateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ProjectType } from '../types/project.types';
 
 @Entity('env_templates')
@@ -21,9 +21,9 @@ export class EnvTemplate {
   @Column('simple-array', { nullable: true })
   variables: string[];
 
-  @created_ateColumn()
+  @CreateDateColumn()
   created_at: Date;
 
-  @updated_ateColumn()
+  @UpdateDateColumn()
   updated_at: Date;
 } 

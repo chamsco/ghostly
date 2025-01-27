@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, created_ateColumn, updated_ateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Device } from '../../auth/entities/device.entity';
 import { Project } from '../../projects/entities/project.entity';
@@ -68,9 +68,9 @@ export class User {
   @OneToMany(() => Project, project => project.owner)
   projects: Project[];
 
-  @created_ateColumn()
+  @CreateDateColumn()
   created_at: Date;
 
-  @updated_ateColumn()
+  @UpdateDateColumn()
   updated_at: Date;
 } 

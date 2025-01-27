@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, created_ateColumn, updated_ateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Server } from '../../servers/entities/server.entity';
 import { Resource } from '../../resources/entities/resource.entity';
@@ -43,9 +43,9 @@ export class Project {
   @JoinColumn({ name: 'project_id' })
   environments: Environment[];
 
-  @created_ateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
-  @updated_ateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 } 

@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, created_ateColumn, updated_ateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity()
@@ -18,10 +18,10 @@ export class Device {
   @Column()
   userAgent: string;
 
-  @created_ateColumn()
+  @CreateDateColumn()
   created_at: Date;
 
-  @updated_ateColumn()
+  @UpdateDateColumn()
   lastActive: Date;
 
   @ManyToOne(() => User, user => user.devices, { onDelete: 'CASCADE' })

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, created_ateColumn, updated_ateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
 import { Environment } from '../../projects/entities/environment.entity';
 import { ResourceType, DatabaseType, ServiceType, ProjectStatus } from '../../projects/types/project.types';
@@ -95,10 +95,10 @@ export class Resource {
   @Column({ nullable: true })
   containerId: string | null;
 
-  @created_ateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
-  @updated_ateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 }
 
