@@ -17,7 +17,6 @@ export function ResourceCreate({
   projectId, 
   environmentId,
   serverId,
-  onResourceCreated,
   variant = "default", 
   className, 
   children 
@@ -31,12 +30,7 @@ export function ResourceCreate({
       onClick={() => {
         console.log('Navigating to new resource page', { projectId, environmentId, serverId });
         navigate(
-          `/projects/${projectId}/environments/${environmentId}/new?server=${serverId || ''}`,
-          { 
-            state: { 
-              onResourceCreated: onResourceCreated 
-            } 
-          }
+          `/projects/${projectId}/environments/${environmentId}/new?server=${serverId || ''}&returnTo=${encodeURIComponent(`/projects/${projectId}`)}`
         );
       }}
     >

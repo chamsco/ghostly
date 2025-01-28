@@ -1,24 +1,56 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GitBranch, Box, Database, Container } from 'lucide-react';
 import { Resource } from '@/types/project';
-
-interface LocationState {
-  onResourceCreated?: (resource: Resource) => void;
-}
+import { useEffect } from 'react';
 
 export function NewResource() {
   const { projectId, environmentId } = useParams<{ projectId: string; environmentId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { onResourceCreated } = (location.state as LocationState) || {};
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || `/projects/${projectId}`;
+  const serverId = searchParams.get('server') || '';
+
+  // Handle resource creation result from child routes
+  useEffect(() => {
+    if (location.state?.resource) {
+      console.log('Resource created:', location.state.resource);
+      handleResourceCreated(location.state.resource);
+    }
+  }, [location.state]);
 
   const handleResourceCreated = (resource: Resource) => {
-    // Call the callback if it exists
-    onResourceCreated?.(resource);
+    console.log('Handling resource creation success', { resource, returnTo });
+    // Navigate back with the created resource
+    navigate(returnTo, {
+      replace: true,
+      state: { 
+        createdResource: resource,
+        environmentId: environmentId 
+      }
+    });
+  };
+
+  const handleResourceTypeSelect = (path: string) => {
+    console.log(`Selected resource type: ${path}`, { 
+      projectId, 
+      environmentId,
+      serverId,
+      returnTo,
+      currentPath: location.pathname 
+    });
     
-    // Navigate back to the project detail page
-    navigate(`/projects/${projectId}`);
+    navigate(
+      `/projects/${projectId}/environments/${environmentId}/new/${path}`,
+      {
+        state: { 
+          from: location.pathname,
+          serverId,
+          returnPath: returnTo
+        }
+      }
+    );
   };
 
   const categories = [
@@ -126,21 +158,7 @@ export function NewResource() {
               <Card 
                 key={item.id}
                 className="hover:border-primary cursor-pointer transition-colors"
-                onClick={() => {
-                  console.log(`Navigating to ${item.path} resource creation`, { 
-                    projectId, 
-                    environmentId,
-                    hasCallback: !!onResourceCreated 
-                  });
-                  navigate(
-                    `/projects/${projectId}/environments/${environmentId}/new/${item.path}`,
-                    { 
-                      state: { 
-                        onResourceCreated: handleResourceCreated 
-                      } 
-                    }
-                  );
-                }}
+                onClick={() => handleResourceTypeSelect(item.path)}
               >
                 <CardHeader>
                   <div className="flex items-center gap-4">
