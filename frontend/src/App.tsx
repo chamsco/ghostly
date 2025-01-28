@@ -24,6 +24,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import AuthErrorBoundary from '@/components/auth/AuthErrorBoundary';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Toaster } from '@/components/ui/toaster';
+import { NewResource } from '@/pages/NewResource';
 
 /**
  * Root App Component
@@ -61,6 +62,7 @@ export function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/create" element={<ProjectCreate />} />
               <Route path="/projects/:projectId" element={<ProjectDetail />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new" element={<NewResource />} />
               <Route path="/projects/:projectId/resources" element={<ProjectResources />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
