@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { Resource } from "@/types/project";
 
 interface Props {
   projectId: string;
   environmentId: string;
+  serverId?: string;
+  onResourceCreated?: (resource: Resource) => void;
   variant?: "default" | "outline" | "secondary";
   className?: string;
   children?: React.ReactNode;
@@ -13,6 +16,8 @@ interface Props {
 export function ResourceCreate({ 
   projectId, 
   environmentId,
+  serverId,
+  onResourceCreated,
   variant = "default", 
   className, 
   children 
@@ -24,8 +29,15 @@ export function ResourceCreate({
       variant={variant} 
       className={className}
       onClick={() => {
-        console.log('Navigating to new resource page');
-        navigate(`/projects/${projectId}/environments/${environmentId}/new`);
+        console.log('Navigating to new resource page', { projectId, environmentId, serverId });
+        navigate(
+          `/projects/${projectId}/environments/${environmentId}/new?server=${serverId || ''}`,
+          { 
+            state: { 
+              onResourceCreated: onResourceCreated 
+            } 
+          }
+        );
       }}
     >
       {children || (

@@ -1,10 +1,25 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GitBranch, Box, Database, Container } from 'lucide-react';
+import { Resource } from '@/types/project';
+
+interface LocationState {
+  onResourceCreated?: (resource: Resource) => void;
+}
 
 export function NewResource() {
   const { projectId, environmentId } = useParams<{ projectId: string; environmentId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { onResourceCreated } = (location.state as LocationState) || {};
+
+  const handleResourceCreated = (resource: Resource) => {
+    // Call the callback if it exists
+    onResourceCreated?.(resource);
+    
+    // Navigate back to the project detail page
+    navigate(`/projects/${projectId}`);
+  };
 
   const categories = [
     {
@@ -112,8 +127,19 @@ export function NewResource() {
                 key={item.id}
                 className="hover:border-primary cursor-pointer transition-colors"
                 onClick={() => {
-                  console.log(`Navigating to ${item.path} resource creation`, { projectId, environmentId });
-                  navigate(`/projects/${projectId}/environments/${environmentId}/new/${item.path}`);
+                  console.log(`Navigating to ${item.path} resource creation`, { 
+                    projectId, 
+                    environmentId,
+                    hasCallback: !!onResourceCreated 
+                  });
+                  navigate(
+                    `/projects/${projectId}/environments/${environmentId}/new/${item.path}`,
+                    { 
+                      state: { 
+                        onResourceCreated: handleResourceCreated 
+                      } 
+                    }
+                  );
                 }}
               >
                 <CardHeader>
