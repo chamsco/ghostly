@@ -36,6 +36,13 @@ import { ProjectResources } from '@/pages/ProjectResources';
 import { Servers } from '@/pages/Servers';
 import { ServerCreatePage } from '@/pages/ServerCreatePage';
 import ProjectDetail from '@/pages/ProjectDetail';
+import { NewResource } from '@/pages/NewResource';
+import { GithubResource } from '@/features/resources/components/github-resource';
+import { PrivateGitResource } from '@/features/resources/components/private-git-resource';
+import { PublicGitResource } from '@/features/resources/components/public-git-resource';
+import { DockerfileResource } from '@/features/resources/components/dockerfile-resource';
+import { DockerComposeResource } from '@/features/resources/components/docker-compose-resource';
+import { DockerImageResource } from '@/features/resources/components/docker-image-resource';
 
 // Configure React Query client with custom defaults
 // - Disable automatic retries on failed requests
@@ -91,6 +98,39 @@ export const router = createBrowserRouter([
       {
         path: 'projects/:projectId/resources',
         element: <ProjectResources />
+      },
+      {
+        path: 'projects/:projectId/environments/:environmentId/new',
+        children: [
+          {
+            index: true,
+            element: <NewResource />
+          },
+          {
+            path: 'public',
+            element: <PublicGitResource />
+          },
+          {
+            path: 'github',
+            element: <GithubResource />
+          },
+          {
+            path: 'private',
+            element: <PrivateGitResource />
+          },
+          {
+            path: 'dockerfile',
+            element: <DockerfileResource />
+          },
+          {
+            path: 'compose',
+            element: <DockerComposeResource />
+          },
+          {
+            path: 'image',
+            element: <DockerImageResource />
+          }
+        ]
       },
       {
         path: 'users',

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams, Outlet } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 //import { CardHeader } from '@/components/ui/card';
 import { GitBranch, Box, Database, Container, Loader2 } from 'lucide-react';
@@ -128,18 +128,23 @@ export function NewResource() {
         returnTo: returnTo
       });
       
-      navigate(
-        `/projects/${projectId}/environments/${environmentId}/new/${path}?${params}`,
-        {
-          state: { 
-            from: location.pathname,
-            serverId,
-            returnPath: returnTo
-          } as LocationState
-        }
-      );
+      navigate(path + '?' + params.toString(), {
+        state: { 
+          from: location.pathname,
+          serverId,
+          returnPath: returnTo
+        } as LocationState
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to navigate to resource creation"
+      });
     } finally {
-      setIsNavigating(false);
+      // Reset navigation state after a short delay to ensure the loader is visible
+      setTimeout(() => setIsNavigating(false), 100);
     }
   };
 
@@ -235,6 +240,12 @@ export function NewResource() {
     );
   }
 
+  // If we're at a child route, render the child component
+  if (location.pathname.split('/').length > 7) {
+    return <Outlet />;
+  }
+
+  // Otherwise, render the resource type selection screen
   return (
     <div className="container mx-auto py-6 space-y-8 max-w-[1200px]">
       <div className="flex items-center justify-between">
