@@ -1,18 +1,48 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 //import { CardHeader } from '@/components/ui/card';
 import { GitBranch, Box, Database, Container, Loader2 } from 'lucide-react';
-import { Resource } from '@/types/project';
-import { useEffect, useState } from 'react';
+import { Resource, ServiceType, ProjectStatus } from '@/types/project';
+//import { EnvironmentVariable } from '@/types/environment';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useToast } from '@/components/ui/use-toast';
+import { z } from 'zod';
+//import { Button } from '@/components/ui/button';
 
-interface LocationState {
-  from: string;
-  serverId?: string;
-  returnPath: string;
-  resource?: Resource;
-}
+// Validation schemas
+const environmentVariableSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  value: z.string(),
+  isSecret: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string()
+});
+
+const resourceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.nativeEnum(ServiceType),
+  serverId: z.string(),
+  status: z.nativeEnum(ProjectStatus),
+  error: z.string().optional(),
+  url: z.string().optional(),
+  environmentId: z.string(),
+  projectId: z.string(),
+  environmentVariables: z.array(environmentVariableSchema).optional(),
+  created_at: z.string(),
+  updated_at: z.string()
+});
+
+const locationStateSchema = z.object({
+  from: z.string(),
+  serverId: z.string().optional(),
+  returnPath: z.string(),
+  resource: resourceSchema.optional(),
+});
+
+type LocationState = z.infer<typeof locationStateSchema>;
 
 interface ResourceCreatedState {
   createdResource: Resource;
@@ -20,7 +50,7 @@ interface ResourceCreatedState {
 }
 
 export function NewResource() {
-  const { projectId, environmentId } = useParams<{ projectId: string; environmentId: string }>();
+  const { projectId = '', environmentId = '' } = useParams<{ projectId: string; environmentId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -31,11 +61,22 @@ export function NewResource() {
 
   // Handle resource creation result from child routes
   useEffect(() => {
-    const state = location.state as LocationState;
-    if (state?.resource) {
-      console.log('Resource created:', state.resource);
-      handleResourceCreated(state.resource);
-    }
+    const handleLocationState = () => {
+      const parseResult = locationStateSchema.safeParse(location.state);
+      
+      if (!parseResult.success) {
+        console.error('Invalid location state:', parseResult.error);
+        return;
+      }
+
+      const state = parseResult.data;
+      if (state?.resource) {
+        console.log('Resource created:', state.resource);
+        handleResourceCreated(state.resource);
+      }
+    };
+
+    handleLocationState();
   }, [location.state]);
 
   const handleResourceCreated = (resource: Resource) => {
@@ -61,7 +102,7 @@ export function NewResource() {
     }
   };
 
-  const handleResourceTypeSelect = async (path: string) => {
+  const handleResourceTypeSelect = (path: string) => {
     if (!projectId || !environmentId) {
       console.error('Missing required parameters', { projectId, environmentId });
       toast({
@@ -82,8 +123,13 @@ export function NewResource() {
         currentPath: location.pathname 
       });
       
-      await navigate(
-        `/projects/${projectId}/environments/${environmentId}/new/${path}`,
+      const params = new URLSearchParams({
+        server: serverId,
+        returnTo: returnTo
+      });
+      
+      navigate(
+        `/projects/${projectId}/environments/${environmentId}/new/${path}?${params}`,
         {
           state: { 
             from: location.pathname,
@@ -92,13 +138,7 @@ export function NewResource() {
           } as LocationState
         }
       );
-    } catch (error) {
-      console.error('Navigation error:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to navigate to resource creation"
-      });
+    } finally {
       setIsNavigating(false);
     }
   };

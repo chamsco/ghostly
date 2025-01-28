@@ -199,15 +199,19 @@ export default function ProjectDetail() {
   };
 
   const handleResourceCreated = (resource: Resource) => {
-    if (!project || !selectedEnvironment) return;
-
-    // Update local state
     setProject(prev => {
       if (!prev) return null;
+      
+      const currentEnv = prev.environments.find(e => 
+        e.id === selectedEnvironment?.id
+      );
+      
+      if (!currentEnv) return prev;
+
       return {
         ...prev,
         environments: prev.environments.map(env => 
-          env.id === selectedEnvironment.id 
+          env.id === currentEnv.id
             ? { ...env, resources: [...env.resources, resource] }
             : env
         )

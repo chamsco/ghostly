@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,16 +44,20 @@ export function ProjectResources() {
     fetchProject();
   }, [projectId, toast]);
 
-  const handleResourceCreated = (resource: Resource) => {
+  const handleResourceCreated = useCallback((resource: Resource) => {
     toast({
       title: "Success",
       description: `Resource ${resource.name} added successfully`
     });
-    // Refresh project data
-    if (projectId) {
-      projectsApi.findOne(projectId).then(setProject);
-    }
-  };
+    setProject(prev => prev ? {
+      ...prev,
+      environments: prev.environments.map(env => 
+        env.id === selectedEnvironment?.id
+          ? { ...env, resources: [...env.resources, resource] }
+          : env
+      )
+    } : null);
+  }, [selectedEnvironment?.id, toast]);
 
   const handleDeleteResource = (resourceId: string) => {
     // Implement the delete logic here

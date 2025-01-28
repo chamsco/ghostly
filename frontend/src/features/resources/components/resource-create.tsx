@@ -29,9 +29,11 @@ export function ResourceCreate({
       className={className}
       onClick={() => {
         console.log('Navigating to new resource page', { projectId, environmentId, serverId });
-        navigate(
-          `/projects/${projectId}/environments/${environmentId}/new?server=${serverId || ''}&returnTo=${encodeURIComponent(`/projects/${projectId}`)}`
-        );
+        const params = new URLSearchParams({
+          server: serverId || '',
+          returnTo: `/projects/${projectId}`
+        });
+        navigate(`/projects/${projectId}/environments/${environmentId}/new?${params}`);
       }}
     >
       {children || (
