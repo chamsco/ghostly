@@ -1,56 +1,106 @@
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GitBranch, Box, Database, Container } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
+//import { CardHeader } from '@/components/ui/card';
+import { GitBranch, Box, Database, Container, Loader2 } from 'lucide-react';
 import { Resource } from '@/types/project';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { useToast } from '@/components/ui/use-toast';
+
+interface LocationState {
+  from: string;
+  serverId?: string;
+  returnPath: string;
+  resource?: Resource;
+}
+
+interface ResourceCreatedState {
+  createdResource: Resource;
+  environmentId: string;
+}
 
 export function NewResource() {
   const { projectId, environmentId } = useParams<{ projectId: string; environmentId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const { toast } = useToast();
   const returnTo = searchParams.get('returnTo') || `/projects/${projectId}`;
   const serverId = searchParams.get('server') || '';
 
   // Handle resource creation result from child routes
   useEffect(() => {
-    if (location.state?.resource) {
-      console.log('Resource created:', location.state.resource);
-      handleResourceCreated(location.state.resource);
+    const state = location.state as LocationState;
+    if (state?.resource) {
+      console.log('Resource created:', state.resource);
+      handleResourceCreated(state.resource);
     }
   }, [location.state]);
 
   const handleResourceCreated = (resource: Resource) => {
     console.log('Handling resource creation success', { resource, returnTo });
-    // Navigate back with the created resource
-    navigate(returnTo, {
-      replace: true,
-      state: { 
-        createdResource: resource,
-        environmentId: environmentId 
-      }
-    });
+    try {
+      // Navigate back with the created resource
+      navigate(returnTo, {
+        replace: true,
+        state: { 
+          createdResource: resource,
+          environmentId: environmentId 
+        } as ResourceCreatedState
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to return to project page"
+      });
+      // Fallback to simple navigation if state transfer fails
+      navigate(returnTo, { replace: true });
+    }
   };
 
-  const handleResourceTypeSelect = (path: string) => {
-    console.log(`Selected resource type: ${path}`, { 
-      projectId, 
-      environmentId,
-      serverId,
-      returnTo,
-      currentPath: location.pathname 
-    });
-    
-    navigate(
-      `/projects/${projectId}/environments/${environmentId}/new/${path}`,
-      {
-        state: { 
-          from: location.pathname,
-          serverId,
-          returnPath: returnTo
+  const handleResourceTypeSelect = async (path: string) => {
+    if (!projectId || !environmentId) {
+      console.error('Missing required parameters', { projectId, environmentId });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing required project information"
+      });
+      return;
+    }
+
+    try {
+      setIsNavigating(true);
+      console.log(`Selected resource type: ${path}`, { 
+        projectId, 
+        environmentId,
+        serverId,
+        returnTo,
+        currentPath: location.pathname 
+      });
+      
+      await navigate(
+        `/projects/${projectId}/environments/${environmentId}/new/${path}`,
+        {
+          state: { 
+            from: location.pathname,
+            serverId,
+            returnPath: returnTo
+          } as LocationState
         }
-      }
-    );
+      );
+    } catch (error) {
+      console.error('Navigation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to navigate to resource creation"
+      });
+      setIsNavigating(false);
+    }
   };
 
   const categories = [
@@ -137,45 +187,112 @@ export function NewResource() {
     }
   ];
 
+  if (isNavigating) {
+    return (
+      <div className="flex h-[200px] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">New Resource</h1>
-        <p className="text-muted-foreground">
-          Deploy resources, like Applications, Databases, Services...
-        </p>
+    <div className="container mx-auto py-6 space-y-8 max-w-[1200px]">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">New Resource</h1>
+          <p className="text-sm text-muted-foreground">
+            Deploy resources, like Applications, Databases, Services...
+          </p>
+        </div>
       </div>
 
-      {categories.map((category) => (
-        <div key={category.title} className="space-y-4">
+      <ErrorBoundary>
+        <div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-semibold">{category.title}</h2>
-            <p className="text-muted-foreground">{category.description}</p>
+            <h2 className="text-lg font-semibold mb-4">Applications</h2>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Git Based</h3>
+              <div className="grid gap-4">
+                {categories[0].items.map((item) => (
+                  <Card 
+                    key={item.id}
+                    className="hover:bg-accent cursor-pointer transition-colors border-muted"
+                    onClick={() => handleResourceTypeSelect(item.path)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-muted p-2 rounded-md">
+                          {item.icon}
+                        </div>
+                        <div>
+                          <CardTitle className="text-base mb-1">{item.title}</CardTitle>
+                          <CardDescription className="text-sm">
+                            {item.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Docker Based</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                {categories[1].items.map((item) => (
+                  <Card 
+                    key={item.id}
+                    className="hover:bg-accent cursor-pointer transition-colors border-muted"
+                    onClick={() => handleResourceTypeSelect(item.path)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-muted p-2 rounded-md">
+                          {item.icon}
+                        </div>
+                        <div>
+                          <CardTitle className="text-base mb-1">{item.title}</CardTitle>
+                          <CardDescription className="text-sm">
+                            {item.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {category.items.map((item) => (
-              <Card 
-                key={item.id}
-                className="hover:border-primary cursor-pointer transition-colors"
-                onClick={() => handleResourceTypeSelect(item.path)}
-              >
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    {item.icon}
-                    <div>
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Databases</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {categories[2].items.map((item) => (
+                <Card 
+                  key={item.id}
+                  className="hover:bg-accent cursor-pointer transition-colors border-muted"
+                  onClick={() => handleResourceTypeSelect(item.path)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-muted p-2 rounded-md">
+                        {item.icon}
+                      </div>
+                      <div>
+                        <CardTitle className="text-base mb-1">{item.title}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {item.description}
+                        </CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
-      ))}
+      </ErrorBoundary>
     </div>
   );
 } 

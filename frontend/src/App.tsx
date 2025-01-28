@@ -25,6 +25,12 @@ import AuthErrorBoundary from '@/components/auth/AuthErrorBoundary';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Toaster } from '@/components/ui/toaster';
 import { NewResource } from '@/pages/NewResource';
+import { PublicGitResource } from '@/features/resources/components/public-git-resource';
+import { GithubResource } from '@/features/resources/components/github-resource';
+import { PrivateGitResource } from '@/features/resources/components/private-git-resource';
+import { DockerfileResource } from '@/features/resources/components/dockerfile-resource';
+import { DockerComposeResource } from '@/features/resources/components/docker-compose-resource';
+import { DockerImageResource } from '@/features/resources/components/docker-image-resource';
 
 /**
  * Root App Component
@@ -63,6 +69,12 @@ export function App() {
               <Route path="/projects/create" element={<ProjectCreate />} />
               <Route path="/projects/:projectId" element={<ProjectDetail />} />
               <Route path="/projects/:projectId/environments/:environmentId/new" element={<NewResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/public" element={<PublicGitResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/github" element={<GithubResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/private" element={<PrivateGitResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/dockerfile" element={<DockerfileResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/compose" element={<DockerComposeResource />} />
+              <Route path="/projects/:projectId/environments/:environmentId/new/image" element={<DockerImageResource />} />
               <Route path="/projects/:projectId/resources" element={<ProjectResources />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
