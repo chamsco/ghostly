@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { EnvironmentVariablesEditor } from "@/components/environment-variables-editor";
+import { useState } from "react";
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -47,6 +48,7 @@ export function ResourceCreate({
   children 
 }: Props) {
   const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -77,6 +79,7 @@ export function ResourceCreate({
         description: "Resource created successfully"
       });
       form.reset();
+      setIsOpen(false);
     } catch (error) {
       console.error("Error creating resource:", error);
       toast({
@@ -88,15 +91,24 @@ export function ResourceCreate({
   };
 
   return (
-    <Dialog>
-      <Button variant={variant} className={className}>
-        {children || (
-          <>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Resource
-          </>
-        )}
-      </Button>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant={variant} 
+          className={className}
+          onClick={() => {
+            console.log('Resource create button clicked');
+            setIsOpen(true);
+          }}
+        >
+          {children || (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Resource
+            </>
+          )}
+        </Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Resource</DialogTitle>
