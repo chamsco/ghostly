@@ -46,9 +46,13 @@ const registerSchema = z.object({
     .regex(passwordPatterns.hasLowerCase, 'Password must contain at least one lowercase letter')
     .regex(passwordPatterns.hasNumber, 'Password must contain at least one number')
     .regex(passwordPatterns.hasSpecialChar, 'Password must contain at least one special character'),
+  confirmPassword: z.string(),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'You must accept the terms and conditions'
   })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -63,7 +67,7 @@ export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
-  const { toast, setError } = useToast();
+  const { toast } = useToast();
 
   /**
    * Form configuration with validation
@@ -72,17 +76,19 @@ export function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
-    setValue
+    setError,
+    clearErrors
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      fullName: '',
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
       acceptTerms: false
     }
   });
-
-  // Watch the acceptTerms field
-  const acceptTerms = watch('acceptTerms');
 
   /**
    * Handles form submission
@@ -97,15 +103,15 @@ export function RegisterForm() {
         description: "Your account has been created successfully.",
       });
       navigate("/login");
-    } catch (error) {
-      if (error.response?.status === 409) {
-        const errorData = error.response.data;
-        if (errorData.type === 'email') {
+    } catch (error: any) { // Type assertion for error
+      if (error?.response?.status === 409) {
+        const errorData = error.response?.data;
+        if (errorData?.type === 'email') {
           setError('email', {
             type: 'manual',
             message: errorData.message
           });
-        } else if (errorData.type === 'username') {
+        } else if (errorData?.type === 'username') {
           setError('username', {
             type: 'manual',
             message: errorData.message
@@ -177,13 +183,33 @@ export function RegisterForm() {
         )}
       </div>
 
+      <div className="space-y-2">
+        <Input
+          type="password"
+          placeholder="••••••••"
+          {...register('confirmPassword')}
+          disabled={isLoading}
+          className="h-11"
+        />
+        {errors.confirmPassword && (
+          <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+        )}
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-start space-x-2">
           <Checkbox
             id="acceptTerms"
-            checked={acceptTerms}
+            checked={errors.acceptTerms === undefined}
             onCheckedChange={(checked) => {
-              setValue('acceptTerms', checked === true);
+              if (checked) {
+                clearErrors('acceptTerms');
+              } else {
+                setError('acceptTerms', {
+                  type: 'manual',
+                  message: 'You must accept the terms and conditions'
+                });
+              }
             }}
             disabled={isLoading}
             aria-describedby="terms-description"

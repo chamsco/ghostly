@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -41,8 +41,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { toast, setError } = useToast();
+  const { toast } = useToast();
 
   /**
    * Form configuration with validation
@@ -55,6 +54,8 @@ export function LoginForm() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
+      username: '',
+      password: '',
       rememberMe: false
     }
   });
@@ -72,15 +73,15 @@ export function LoginForm() {
         description: "You have successfully signed in.",
       });
       navigate("/dashboard");
-    } catch (error) {
-      if (error.response?.status === 401) {
-        const errorData = error.response.data;
-        if (errorData.type === 'username') {
+    } catch (error: any) { // Type assertion for error
+      if (error?.response?.status === 401) {
+        const errorData = error.response?.data;
+        if (errorData?.type === 'username') {
           setFormError('username', {
             type: 'manual',
             message: errorData.message
           });
-        } else if (errorData.type === 'password') {
+        } else if (errorData?.type === 'password') {
           setFormError('password', {
             type: 'manual',
             message: errorData.message
