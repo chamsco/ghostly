@@ -30,11 +30,13 @@ export class AuthService {
       });
 
       if (existingUser) {
-        throw new ConflictException(
-          existingUser.email === email 
-            ? 'Email already registered' 
-            : 'Username already taken'
-        );
+        throw new ConflictException({
+          code: 'USER_EXISTS',
+          message: existingUser.email === email 
+            ? 'An account with this email already exists. Please sign in or reset your password.' 
+            : 'This username is already taken. Please choose a different username.',
+          type: existingUser.email === email ? 'email' : 'username'
+        });
       }
 
       // Hash password
@@ -65,27 +67,28 @@ export class AuthService {
   }
 
   async validateUser(username: string, password: string): Promise<User | null> {
-    try {
-      const user = await this.usersRepository.findOne({ where: { username } });
-      if (!user) {
-        throw new UnauthorizedException('Invalid username or password');
-      }
-      
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid username or password');
-      }
-      
-      return user;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      if (error.code === '42P01') { // relation does not exist
-        throw new InternalServerErrorException('Database setup incomplete. Please contact support.');
-      }
-      throw new InternalServerErrorException('Authentication service unavailable');
+    // Find user by username
+    const user = await this.findByUsername(username);
+    
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'USER_NOT_FOUND',
+        message: 'No account found with this username. Please check your username or register.',
+        type: 'username'
+      });
     }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException({
+        code: 'INVALID_PASSWORD',
+        message: 'Incorrect password. Please try again or reset your password.',
+        type: 'password'
+      });
+    }
+
+    return user;
   }
 
   async login(user: User, deviceName: string, userAgent: string, ip: string, rememberMe = false) {

@@ -42,7 +42,7 @@ export function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+  const { toast, setError } = useToast();
 
   /**
    * Form configuration with validation
@@ -50,7 +50,8 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors }
+    formState: { errors },
+    setError: setFormError
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -65,20 +66,33 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsLoading(true);
-      await login({
-        username: data.username,
-        password: data.password,
-        rememberMe: data.rememberMe
-      });
-      
-      const from = (location.state as any)?.from?.pathname || '/dashboard';
-      navigate(from);
-    } catch (error: any) {
+      await login(data);
       toast({
-        variant: 'destructive',
-        title: 'Login failed',
-        description: error.message || 'Invalid credentials'
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
       });
+      navigate("/dashboard");
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const errorData = error.response.data;
+        if (errorData.type === 'username') {
+          setFormError('username', {
+            type: 'manual',
+            message: errorData.message
+          });
+        } else if (errorData.type === 'password') {
+          setFormError('password', {
+            type: 'manual',
+            message: errorData.message
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

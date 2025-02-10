@@ -63,7 +63,7 @@ export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast, setError } = useToast();
 
   /**
    * Form configuration with validation
@@ -91,28 +91,33 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setIsLoading(true);
-      await registerUser({
-        fullName: data.fullName,
-        username: data.username,
-        email: data.email,
-        password: data.password
-      });
-      
+      await registerUser(data);
       toast({
-        title: 'Registration successful',
-        description: 'Welcome to Squadron! Please complete the onboarding process.'
+        title: "Success!",
+        description: "Your account has been created successfully.",
       });
-
-      // Add a small delay to show the success message
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      navigate('/onboarding');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration failed',
-        description: error.message || 'An error occurred during registration'
-      });
+      navigate("/login");
+    } catch (error) {
+      if (error.response?.status === 409) {
+        const errorData = error.response.data;
+        if (errorData.type === 'email') {
+          setError('email', {
+            type: 'manual',
+            message: errorData.message
+          });
+        } else if (errorData.type === 'username') {
+          setError('username', {
+            type: 'manual',
+            message: errorData.message
+          });
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
