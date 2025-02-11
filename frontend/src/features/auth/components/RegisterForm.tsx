@@ -200,17 +200,7 @@ export function RegisterForm() {
         <div className="flex items-start space-x-2">
           <Checkbox
             id="acceptTerms"
-            checked={errors.acceptTerms === undefined}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                clearErrors('acceptTerms');
-              } else {
-                setError('acceptTerms', {
-                  type: 'manual',
-                  message: 'You must accept the terms and conditions'
-                });
-              }
-            }}
+            {...register('acceptTerms')}
             disabled={isLoading}
             aria-describedby="terms-description"
           />
