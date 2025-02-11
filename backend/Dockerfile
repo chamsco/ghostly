@@ -28,14 +28,14 @@ WORKDIR /usr/src/app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --only=production
+# Install dependencies including development dependencies for migrations
+RUN npm install
 
-# Copy built application and migrations from builder stage
+# Copy built application, migrations, and scripts from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/src/migrations ./src/migrations
-COPY scripts/wait-for-db.sh /scripts/
-RUN chmod +x /scripts/wait-for-db.sh
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/wait-for-db.sh /scripts/start.sh
 
 # Create logs directory
 RUN mkdir -p /usr/src/app/logs && \
@@ -47,4 +47,4 @@ USER node
 EXPOSE 3000
 
 # Use wait script before starting the app
-CMD ["/scripts/wait-for-db.sh", "postgres", "npm", "run", "start:prod"] 
+CMD ["/scripts/wait-for-db.sh", "postgres", "/scripts/start.sh"] 
