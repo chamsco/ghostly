@@ -97,7 +97,9 @@ export function RegisterForm() {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setIsLoading(true);
-      await registerUser(data);
+      // Only send the fields that the backend expects
+      const { email, password, username, fullName } = data;
+      await registerUser({ email, password, username, fullName });
       toast({
         title: "Success!",
         description: "Your account has been created successfully.",
