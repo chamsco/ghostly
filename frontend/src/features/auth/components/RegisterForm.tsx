@@ -76,7 +76,8 @@ export function RegisterForm() {
     register,
     handleSubmit,
     formState: { errors },
-    setError
+    setError,
+    watch
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -199,7 +200,17 @@ export function RegisterForm() {
         <div className="flex items-start space-x-2">
           <Checkbox
             id="acceptTerms"
-            {...register('acceptTerms')}
+            checked={watch('acceptTerms')}
+            onCheckedChange={(checked) => {
+              const value = checked === true;
+              const event = {
+                target: {
+                  name: 'acceptTerms',
+                  value: value
+                }
+              };
+              register('acceptTerms').onChange(event);
+            }}
             disabled={isLoading}
             aria-describedby="terms-description"
           />
