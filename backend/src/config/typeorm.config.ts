@@ -14,6 +14,7 @@ import { AddResourceIndexes1710000000007 } from '../migrations/1710000000007-Add
 import { AddServerAndEnvironmentIds1710000000005 } from '../migrations/1710000000005-AddServerAndEnvironmentIds';
 import { CleanupResourceEnums1710000000006 } from '../migrations/1710000000006-CleanupResourceEnums';
 import { CreateEnvironmentsTable1710000000003 } from '../migrations/1710000000003-CreateEnvironmentsTable';
+import { CreateDeviceTable1710000000008 } from '../migrations/1710000000008-CreateDeviceTable';
 
 export const typeOrmConfig: TypeOrmModuleOptions = {
   type: 'postgres',
@@ -32,6 +33,7 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
     AddServerAndEnvironmentIds1710000000005,
     CleanupResourceEnums1710000000006,
     AddResourceIndexes1710000000007,
+    CreateDeviceTable1710000000008,
   ],
   migrationsRun: true,
   migrationsTransactionMode: 'all',
