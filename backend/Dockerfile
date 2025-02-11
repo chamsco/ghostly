@@ -31,8 +31,9 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm install --only=production
 
-# Copy built application from builder stage
+# Copy built application and migrations from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/src/migrations ./src/migrations
 COPY scripts/wait-for-db.sh /scripts/
 RUN chmod +x /scripts/wait-for-db.sh
 
