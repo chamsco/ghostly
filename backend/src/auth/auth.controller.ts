@@ -103,11 +103,11 @@ export class AuthController {
         isAdmin: user.isAdmin
       });
 
+      const deviceName = req.headers['user-agent'] || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
       const ip = req.ip || 'unknown';
 
-      const result = await this.authService.login(user, userAgent, userAgent, ip, rememberMe);
-
+      const result = await this.authService.login(user, deviceName, userAgent, ip, rememberMe);
       console.log('✅ Login successful:', {
         userId: user.id,
         deviceId: result.deviceId,

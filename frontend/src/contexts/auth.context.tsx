@@ -99,20 +99,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (data: LoginDto): Promise<void> => {
     try {
       setLoading(true);
-      setError(null);
       console.log('🔑 Attempting login...');
-      const response = await authApi.login(data);
+      
+      // Add device information to the login request
+      const deviceName = window.navigator.platform || 'Unknown Device';
+      const userAgent = window.navigator.userAgent;
+      const ip = window.location.hostname || 'unknown';
+      const loginData = {
+        username: data.username,
+        password: data.password,
+        rememberMe: data.rememberMe || false,
+        deviceName,
+        userAgent,
+        ip
+      };  
+      const response = await authApi.login(loginData);
+      console.log('✅ Login successful');
+      
       if (response.access_token) {
         localStorage.setItem('accessToken', response.access_token);
         setAccessToken(response.access_token);
-        setUser(response.user);
         setIsAuthenticated(true);
-        console.log('✅ Login successful');
       }
+      
+      setError(null);
     } catch (error) {
       console.error('❌ Login failed:', error);
-      setIsAuthenticated(false);
-      setError(error instanceof Error ? error.message : 'Login failed');
+      setError('Failed to login');
       throw error;
     } finally {
       setLoading(false);

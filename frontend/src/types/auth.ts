@@ -53,6 +53,9 @@ export interface LoginDto {
   username: string;
   password: string;
   rememberMe?: boolean;
+  deviceName?: string;
+  userAgent?: string;
+  ip?: string;
 }
 
 export interface RegisterDto {
@@ -60,4 +63,4 @@ export interface RegisterDto {
   username: string;
   email: string;
   password: string;
-} 
+}
