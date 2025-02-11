@@ -25,6 +25,7 @@ import { CreateEnvironmentsTable1710000000003 } from './migrations/1710000000003
 import { CreateEnvironmentVariablesTable1710000000004 } from './migrations/1710000000004-CreateEnvironmentVariablesTable';
 import { CleanupResourceEnums1710000000006 } from './migrations/1710000000006-CleanupResourceEnums';
 import { AddResourceIndexes1710000000007 } from './migrations/1710000000007-AddResourceIndexes';
+import { CreateDeviceTable1710000000008 } from './migrations/1710000000008-CreateDeviceTable';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AddResourceIndexes1710000000007 } from './migrations/1710000000007-AddR
           AddServerAndEnvironmentIds1710000000005,
           CleanupResourceEnums1710000000006,
           AddResourceIndexes1710000000007,
+          CreateDeviceTable1710000000008,
         ],
         migrationsRun: true,
         synchronize: false,
